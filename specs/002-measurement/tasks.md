@@ -5,7 +5,7 @@
 ## Phase 1: Криптографія і кодування (critical)
 
 - [x] T-012 [FR-002-03] critical: base58 encode/decode + вектори. Тест `tests/test_base58.py`. Імпл `python/itb/base58.py`.
-- [ ] T-013 [FR-002-02] critical: ed25519 sign/verify + RFC 8032 вектори. Тест `tests/test_ed25519.py`. Імпл `python/itb/ed25519.py` (вендорений еталон, походження в шапці).
+- [x] T-013 [FR-002-02] critical: ed25519 sign/verify + RFC 8032 вектори. Тест `tests/test_ed25519.py`. Імпл `python/itb/ed25519.py` (вендорений еталон, походження в шапці).
 - [ ] T-014 [FR-002-01] critical: Серіалізація message/tx + builder Memo+ComputeBudget. Тест `tests/test_txbuilder.py` (детермінований golden bytes для фіксованого входу; кожен підпис верифікується). Імпл `python/itb/txbuilder.py`.
 
 ## Phase 2: Дизайн батчів
