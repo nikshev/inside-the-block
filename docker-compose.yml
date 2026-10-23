@@ -13,6 +13,7 @@ services:
     command: ["sh", "-c", "python3 scripts/run_pipeline.py"]
 
   # Локальний профіль: docker compose --profile local up (без mainnet)
+  # impl: FR-001-12
   local-validator:
     image: solanalabs/solana:stable
     profiles: ["local"]

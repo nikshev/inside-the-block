@@ -44,7 +44,7 @@
 
 Незалежний тест: локальний профіль без mainnet — батч зібрано, блок розпарсено.
 
-- [ ] T-010 [FR-001-12] Локальний профіль compose + фікстура блока. Тест `tests/test_local.py` (парсинг фікстури `tests/fixtures/block_<slot>.json` у позиції; compose-профіль `local` не містить mainnet RPC). Імпл `docker-compose.yml` (профіль `local`) + `tests/fixtures/block_*.json` (`trace: ignore-file`) + доку `docs/local-dev.md`.
+- [x] T-010 [FR-001-12] Локальний профіль compose + фікстура блока. Тест `tests/test_local.py` (парсинг фікстури `tests/fixtures/block_<slot>.json` у позиції; compose-профіль `local` не містить mainnet RPC). Імпл `docker-compose.yml` (профіль `local`) + `tests/fixtures/block_*.json` (`trace: ignore-file`) + доку `docs/local-dev.md`.
 
 ## Phase 7: Наскрізний dry-run (Definition of Done фічі)
 
