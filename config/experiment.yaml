@@ -16,6 +16,15 @@ arms:
   C_price: 5000
   C_limits: [50000, 100000, 200000, 400000, 800000, 1000000]
   D_levels: [0, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 200000]
+# Пороги аналізу (зміна порога змінює вердикти — тому тут, під версією).
+analysis:
+  min_pairs: 30
+  bootstrap_samples: 1000
+  bootstrap_seed: 7
+  permutation_samples: 999
+  permutation_seed: 11
+  strict_agreement: 0.95
+  significance_p: 0.01
 validators:
   - identity: "TestValidator1111111111111111111111111111111111"
     label: "agave-1"
