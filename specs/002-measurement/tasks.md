@@ -20,7 +20,7 @@
 
 ## Phase 4: Оркестрація батча
 
-- [ ] T-019 [FR-002-08, FR-002-10] critical: `measure.run_batch`: guard→build→sign→verify→send→collect; off-target мітка; dry-run без мережі. Тест `tests/test_measure.py` (dry-run без мережі; off-target виключається; guard-reject зупиняє). Імпл `python/itb/measure.py`.
+- [x] T-019 [FR-002-08, FR-002-10] critical: `measure.run_batch`: guard→build→sign→verify→send→collect; off-target мітка; dry-run без мережі. Тест `tests/test_measure.py` (dry-run без мережі; off-target виключається; guard-reject зупиняє). Імпл `python/itb/measure.py`.
 
 ## Покриття FR
 

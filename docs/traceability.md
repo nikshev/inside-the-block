@@ -2,7 +2,7 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **22** · задач: **19** (виконано 18) · вимог у роботі: **2** · порушень: **0**
+Вимог: **22** · задач: **19** (виконано 19) · вимог у роботі: **0** · порушень: **0**
 
 ## 001-pipeline-safety
 
@@ -32,9 +32,9 @@
 | `FR-002-05` | Порядок відправки в батчі MUST рандомізуватися з seed, що | `T-015` | `python/itb/arms.py` | `tests/test_arms.py` |
 | `FR-002-06` | Система MUST читати leader-розклад (`getLeaderSchedule`) і | `T-016` | `python/itb/schedule.py` | `tests/test_schedule.py` |
 | `FR-002-07` | Відправка MUST підтримувати шлях `direct-tpu` (інтерфейс + | `T-017` | `python/itb/sender.py` | `tests/test_sender.py` |
-| `FR-002-08` | Час відправки кожної tx MUST фіксуватися в мікросекундах; | `T-019` | — | — |
+| `FR-002-08` | Час відправки кожної tx MUST фіксуватися в мікросекундах; | `T-019` | `python/itb/measure.py` | `tests/test_measure.py` |
 | `FR-002-09` | Збір позицій MUST парсити `getBlock` у порядку entries і | `T-018` | `python/itb/collector.py` | `tests/test_collector.py` |
-| `FR-002-10` | Жодна відправка MUST НЕ відбуватися без `decide==accepted` | `T-019` | — | — |
+| `FR-002-10` | Жодна відправка MUST НЕ відбуватися без `decide==accepted` | `T-019` | `python/itb/measure.py` | `tests/test_measure.py` |
 
 ## Критичні задачі
 
@@ -46,4 +46,4 @@
 - `T-012` (002-measurement) — виконано
 - `T-013` (002-measurement) — виконано
 - `T-014` (002-measurement) — виконано
-- `T-019` (002-measurement) — у роботі
+- `T-019` (002-measurement) — виконано
