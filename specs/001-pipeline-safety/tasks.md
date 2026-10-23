@@ -48,7 +48,7 @@
 
 ## Phase 7: Наскрізний dry-run (Definition of Done фічі)
 
-- [ ] T-011 [FR-001-01, FR-001-06, FR-001-07, FR-001-11] E2E dry-run на 6 валідаторах-заглушках. Тест `tests/test_e2e_dryrun.py` (прогін `pipeline.run(dry-run)` → для кожного валідатора вікно або `no-window` з причиною; `sent.csv`/`landed.csv`/`snapshot` містять `config_version`; guard-розрахунок у логах). Імпл без нових файлів — зв'язує T-001..T-006 (дрібні правки `pipeline.py`/`storage.py` за потреби).
+- [x] T-011 [FR-001-01, FR-001-06, FR-001-07, FR-001-11] E2E dry-run на 6 валідаторах-заглушках. Тест `tests/test_e2e_dryrun.py` (прогін `pipeline.run(dry-run)` → для кожного валідатора вікно або `no-window` з причиною; `sent.csv`/`landed.csv`/`snapshot` містять `config_version`; guard-розрахунок у логах). Імпл без нових файлів — зв'язує T-001..T-006 (дрібні правки `pipeline.py`/`storage.py` за потреби).
 
 ## Покриття FR
 

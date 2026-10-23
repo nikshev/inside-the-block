@@ -2,23 +2,23 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **12** · задач: **11** (виконано 10) · вимог у роботі: **4** · порушень: **0**
+Вимог: **12** · задач: **11** (виконано 11) · вимог у роботі: **0** · порушень: **0**
 
 ## 001-pipeline-safety
 
 | Вимога | Опис | Задачі | Імплементація | Тести |
 |---|---|---|---|---|
-| `FR-001-01` | Система MUST запускатися однією командою `docker compose up` | `T-006`, `T-011` | `python/itb/pipeline.py` | `tests/test_pipeline.py` |
+| `FR-001-01` | Система MUST запускатися однією командою `docker compose up` | `T-006`, `T-011` | `python/itb/pipeline.py` | `tests/test_pipeline.py`, `tests/test_e2e_dryrun.py` |
 | `FR-001-02` | Система MUST відправляти на mainnet лише з явним прапорцем | `T-006` | `python/itb/pipeline.py` | `tests/test_pipeline.py` |
 | `FR-001-03` | Система MUST тримати весь ліміт витрат в одному YAML під git | `T-001` | `python/itb/config.py` | `tests/test_config.py` |
 | `FR-001-04` | Spend guard MUST до кожної відправки рахувати максимальну | `T-002`, `T-007` | `python/itb/guard.py` | `tests/test_spend_integration.py`, `tests/test_guard.py` |
 | `FR-001-05` | Система MUST вести леджер витрат у файлі (append-only) | `T-003`, `T-007` | `python/itb/ledger.py` | `tests/test_spend_integration.py`, `tests/test_ledger.py` |
-| `FR-001-06` | Система MUST писати структуровані JSON-логи кожного кроку з | `T-004`, `T-011` | `python/itb/log.py` | `tests/test_log.py` |
-| `FR-001-07` | Система MUST зберігати сирі дані у фіксованій розкладці | `T-005`, `T-011` | `python/itb/storage.py` | `tests/test_storage.py` |
+| `FR-001-06` | Система MUST писати структуровані JSON-логи кожного кроку з | `T-004`, `T-011` | `python/itb/log.py` | `tests/test_e2e_dryrun.py`, `tests/test_log.py` |
+| `FR-001-07` | Система MUST зберігати сирі дані у фіксованій розкладці | `T-005`, `T-011` | `python/itb/storage.py` | `tests/test_storage.py`, `tests/test_e2e_dryrun.py` |
 | `FR-001-08` | Система MUST надавати скрипт `verify`, що за `data/` заново | `T-008` | `scripts/verify.py` | `tests/test_verify.py` |
 | `FR-001-09` | Система MUST тримати ключі лише через volume і RPC URL лише | `T-009` | `docker-compose.yml` | `tests/test_secrets.py` |
 | `FR-001-10` | Секрет випадково потрапив у репо: CI-чек падає до мержу (див. ). | `T-009` | `.github/workflows/ci.yml` | `tests/test_secrets.py` |
-| `FR-001-11` | Конфіг MUST мати `config_version` і кожен прогін MUST писати | `T-001`, `T-011` | `python/itb/config.py` | `tests/test_config.py` |
+| `FR-001-11` | Конфіг MUST мати `config_version` і кожен прогін MUST писати | `T-001`, `T-011` | `python/itb/config.py` | `tests/test_config.py`, `tests/test_e2e_dryrun.py` |
 | `FR-001-12` | Система MUST підтримувати локальний профіль | `T-010` | `docker-compose.yml` | `tests/test_local.py` |
 
 ## Критичні задачі
