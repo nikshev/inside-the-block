@@ -2,7 +2,7 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **22** · задач: **19** (виконано 17) · вимог у роботі: **3** · порушень: **0**
+Вимог: **22** · задач: **19** (виконано 18) · вимог у роботі: **2** · порушень: **0**
 
 ## 001-pipeline-safety
 
@@ -33,7 +33,7 @@
 | `FR-002-06` | Система MUST читати leader-розклад (`getLeaderSchedule`) і | `T-016` | `python/itb/schedule.py` | `tests/test_schedule.py` |
 | `FR-002-07` | Відправка MUST підтримувати шлях `direct-tpu` (інтерфейс + | `T-017` | `python/itb/sender.py` | `tests/test_sender.py` |
 | `FR-002-08` | Час відправки кожної tx MUST фіксуватися в мікросекундах; | `T-019` | — | — |
-| `FR-002-09` | Збір позицій MUST парсити `getBlock` у порядку entries і | `T-018` | — | — |
+| `FR-002-09` | Збір позицій MUST парсити `getBlock` у порядку entries і | `T-018` | `python/itb/collector.py` | `tests/test_collector.py` |
 | `FR-002-10` | Жодна відправка MUST НЕ відбуватися без `decide==accepted` | `T-019` | — | — |
 
 ## Критичні задачі
