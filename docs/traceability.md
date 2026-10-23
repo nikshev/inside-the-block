@@ -2,7 +2,7 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **12** · задач: **11** (виконано 6) · вимог у роботі: **10** · порушень: **0**
+Вимог: **12** · задач: **11** (виконано 7) · вимог у роботі: **8** · порушень: **0**
 
 ## 001-pipeline-safety
 
@@ -11,8 +11,8 @@
 | `FR-001-01` | Система MUST запускатися однією командою `docker compose up` | `T-006`, `T-011` | `python/itb/pipeline.py` | `tests/test_pipeline.py` |
 | `FR-001-02` | Система MUST відправляти на mainnet лише з явним прапорцем | `T-006` | `python/itb/pipeline.py` | `tests/test_pipeline.py` |
 | `FR-001-03` | Система MUST тримати весь ліміт витрат в одному YAML під git | `T-001` | `python/itb/config.py` | `tests/test_config.py` |
-| `FR-001-04` | Spend guard MUST до кожної відправки рахувати максимальну | `T-002`, `T-007` | `python/itb/guard.py` | `tests/test_guard.py` |
-| `FR-001-05` | Система MUST вести леджер витрат у файлі (append-only) | `T-003`, `T-007` | `python/itb/ledger.py` | `tests/test_ledger.py` |
+| `FR-001-04` | Spend guard MUST до кожної відправки рахувати максимальну | `T-002`, `T-007` | `python/itb/guard.py` | `tests/test_spend_integration.py`, `tests/test_guard.py` |
+| `FR-001-05` | Система MUST вести леджер витрат у файлі (append-only) | `T-003`, `T-007` | `python/itb/ledger.py` | `tests/test_spend_integration.py`, `tests/test_ledger.py` |
 | `FR-001-06` | Система MUST писати структуровані JSON-логи кожного кроку з | `T-004`, `T-011` | `python/itb/log.py` | `tests/test_log.py` |
 | `FR-001-07` | Система MUST зберігати сирі дані у фіксованій розкладці | `T-005`, `T-011` | `python/itb/storage.py` | `tests/test_storage.py` |
 | `FR-001-08` | Система MUST надавати скрипт `verify`, що за `data/` заново | `T-008` | — | — |
@@ -26,5 +26,5 @@
 - `T-001` (001-pipeline-safety) — виконано
 - `T-002` (001-pipeline-safety) — виконано
 - `T-003` (001-pipeline-safety) — виконано
-- `T-007` (001-pipeline-safety) — у роботі
+- `T-007` (001-pipeline-safety) — виконано
 - `T-008` (001-pipeline-safety) — у роботі

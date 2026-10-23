@@ -28,7 +28,7 @@
 
 Незалежний тест: cap 10 000, батч 11 000 → відхилено до відправки, у леджері `rejected`.
 
-- [ ] T-007 [FR-001-05, FR-001-04] critical: Інтеграція guard→ledger→pipeline. Тест `tests/test_spend_integration.py` (два батчі, що разом перевищують cap: перший accepted, другий rejected, сумарний леджер ≤ cap). Імпл `python/itb/pipeline.py` (доповнення) — без нових модулів.
+- [x] T-007 [FR-001-05, FR-001-04] critical: Інтеграція guard→ledger→pipeline. Тест `tests/test_spend_integration.py` (два батчі, що разом перевищують cap: перший accepted, другий rejected, сумарний леджер ≤ cap). Імпл `python/itb/pipeline.py` (доповнення) — без нових модулів.
 
 ## Phase 4: User Story 3 — Суддя перевіряє (P2)
 
