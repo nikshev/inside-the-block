@@ -7,8 +7,8 @@
 
 | Захід | Дата (UTC) | Епоха | Конфіг | Примітка |
 |---|---|---|---|---|
-| dry-run | ⏳ | — | `config_version` ⏳ | tx побудовані, guard пораховано |
-| devnet e2e | ⏳ | — | ⏳ | безкоштовно, без mainnet |
+| dry-run | 2026-10-23 | — | `2026.10.23.2` | `run_pipeline.py`: 6 батчів × 10 tx, guard пораховано, леджер порожній |
+| devnet e2e | 2026-10-23 | слот 514274625+ | `2026.10.23.2` | ЧАСТКОВО: build+sign реальних tx і `run_devnet.py --dry-run` зелені; live-відправка BLOCKED — публічний кран 429 по IP (ключ `keys/devnet-e2e.json`, фандинг через faucet.solana.com або RPC-ключ; rerun: `run_devnet.py --live --keypair keys/devnet-e2e.json`) |
 | live #1 | ⏳ | ⏳ | ⏳ | після Alpenglow (21.10.2026), без змішування |
 | live #2 (повтор) | ⏳ | ⏳ | ⏳ | якщо landing rate низький |
 

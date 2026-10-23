@@ -2,7 +2,7 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **33** · задач: **30** (виконано 30) · вимог у роботі: **0** · порушень: **0**
+Вимог: **33** · задач: **31** (виконано 31) · вимог у роботі: **0** · порушень: **0**
 
 ## 001-pipeline-safety
 
@@ -19,7 +19,7 @@
 | `FR-001-09` | Система MUST тримати ключі лише через volume і RPC URL лише | `T-009` | `docker-compose.yml` | `tests/test_secrets.py` |
 | `FR-001-10` | Секрет випадково потрапив у репо: CI-чек падає до мержу (див. ). | `T-009` | `.github/workflows/ci.yml` | `tests/test_secrets.py` |
 | `FR-001-11` | Конфіг MUST мати `config_version` і кожен прогін MUST писати | `T-001`, `T-011` | `python/itb/config.py` | `tests/test_config.py`, `tests/test_e2e_dryrun.py` |
-| `FR-001-12` | Система MUST підтримувати локальний профіль | `T-010` | `docker-compose.yml` | `tests/test_local.py` |
+| `FR-001-12` | Система MUST підтримувати локальний профіль | `T-010`, `T-031` | `docker-compose.yml`, `scripts/run_devnet.py` | `tests/test_local.py`, `tests/test_run_devnet.py` |
 
 ## 002-measurement
 
