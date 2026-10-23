@@ -22,7 +22,7 @@
 Незалежний тест: `docker compose up` без ключів → exit 0, `mode=dry-run`,
 `spend_guard=would-stop-before-send`, леджер порожній, жодної відправки.
 
-- [ ] T-006 [FR-001-01, FR-001-02] Pipeline-оркестратор + Docker. Тест `tests/test_pipeline.py` (dry-run будує батч із stub-підписами і зупиняється до sender; `MODE=live` без guard падає; логи містять `mode`+`config_version`). Імпл `python/itb/pipeline.py` + `Dockerfile` + `docker-compose.yml` + `.env.example`.
+- [x] T-006 [FR-001-01, FR-001-02] Pipeline-оркестратор + Docker. Тест `tests/test_pipeline.py` (dry-run будує батч із stub-підписами і зупиняється до sender; `MODE=live` без guard падає; логи містять `mode`+`config_version`). Імпл `python/itb/pipeline.py` + `Dockerfile` + `docker-compose.yml` + `.env.example`.
 
 ## Phase 3: User Story 2 — Spend guard тримає бюджет (P1)
 

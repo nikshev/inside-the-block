@@ -1,0 +1,19 @@
+# Одна команда: docker compose up -> dry-run. Live лише MODE=live.
+services:
+  pipeline:
+    build: .
+    environment:
+      MODE: ${MODE:-dry-run}
+      RPC_URL: ${RPC_URL:-}
+      WS_URL: ${WS_URL:-}
+    volumes:
+      - ./data:/app/data
+      - ./keys:/app/keys:ro
+    command: ["sh", "-c", "python3 scripts/run_pipeline.py"]
+
+  # Локальний профіль: docker compose --profile local up (без mainnet)
+  local-validator:
+    image: solanalabs/solana:stable
+    profiles: ["local"]
+    ports: ["8899:8899", "8900:8900"]
+    command: ["solana-test-validator", "--reset"]

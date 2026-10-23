@@ -2,14 +2,14 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **12** · задач: **11** (виконано 5) · вимог у роботі: **11** · порушень: **0**
+Вимог: **12** · задач: **11** (виконано 6) · вимог у роботі: **10** · порушень: **0**
 
 ## 001-pipeline-safety
 
 | Вимога | Опис | Задачі | Імплементація | Тести |
 |---|---|---|---|---|
-| `FR-001-01` | Система MUST запускатися однією командою `docker compose up` | `T-006`, `T-011` | — | — |
-| `FR-001-02` | Система MUST відправляти на mainnet лише з явним прапорцем | `T-006` | — | — |
+| `FR-001-01` | Система MUST запускатися однією командою `docker compose up` | `T-006`, `T-011` | `python/itb/pipeline.py` | `tests/test_pipeline.py` |
+| `FR-001-02` | Система MUST відправляти на mainnet лише з явним прапорцем | `T-006` | `python/itb/pipeline.py` | `tests/test_pipeline.py` |
 | `FR-001-03` | Система MUST тримати весь ліміт витрат в одному YAML під git | `T-001` | `python/itb/config.py` | `tests/test_config.py` |
 | `FR-001-04` | Spend guard MUST до кожної відправки рахувати максимальну | `T-002`, `T-007` | `python/itb/guard.py` | `tests/test_guard.py` |
 | `FR-001-05` | Система MUST вести леджер витрат у файлі (append-only) | `T-003`, `T-007` | `python/itb/ledger.py` | `tests/test_ledger.py` |
