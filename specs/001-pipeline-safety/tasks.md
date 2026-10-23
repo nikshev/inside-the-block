@@ -9,7 +9,7 @@
 
 Блокери для всього іншого. Порядок всередині фази — за залежностями.
 
-- [ ] T-001 [FR-001-03, FR-001-11] critical: Конфіг-лоадер + приклад YAML. Тест `tests/test_config.py` (dict без pyyaml: валідний конфіг грузиться, відсутній `spend_cap` / невідома версія / URL замість `env:` — падає з полем помилки). Імпл `python/itb/config.py` + `config/experiment.yaml`. Контракт `contracts/config.md`.
+- [x] T-001 [FR-001-03, FR-001-11] critical: Конфіг-лоадер + приклад YAML. Тест `tests/test_config.py` (dict без pyyaml: валідний конфіг грузиться, відсутній `spend_cap` / невідома версія / URL замість `env:` — падає з полем помилки). Імпл `python/itb/config.py` + `config/experiment.yaml`. Контракт `contracts/config.md`.
 - [ ] T-002 [FR-001-04] critical: Spend guard як чиста функція. Тест `tests/test_guard.py` (межі: `spent+max==cap` прийняти, `==cap+1` відхилити, `cap==0` відхилити, порожній батч відхилити). Імпл `python/itb/guard.py`. Контракт `contracts/guard.md`.
 - [ ] T-003 [FR-001-05] critical: Append-only леджер з відновленням. Тест `tests/test_ledger.py` (append accepted/rejected → `spent_total` збігається після перевідкриття; інваріант `spent_after ≤ cap`). Імпл `python/itb/ledger.py`. Контракт `contracts/ledger.md`.
 - [ ] T-004 [FR-001-06] JSON-логер. Тест `tests/test_log.py` (обов'язкові поля, `ts_us` int, жодних секретів у виводі). Імпл `python/itb/log.py`. Контракт `contracts/log-record.md`.
