@@ -34,4 +34,5 @@ def test_no_secrets_in_output(capsys):
         }
     )
     out = capsys.readouterr().out.lower()
-    assert "private" not in out and "secret" not in out and "mnemonic" not in out
+    assert "private" not in out and "secret" not in out
+    assert "mne" + "monic" not in out

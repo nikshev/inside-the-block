@@ -38,7 +38,7 @@
 
 ## Phase 5: Безпека секретів + CI (P1-блокер мержу)
 
-- [ ] T-009 [FR-001-09, FR-001-10] Ключі через volume/env + CI-скан. Тест `tests/test_secrets.py` (репозиторій без `.env`/ключів: `.env.example` без секретів, `.gitignore` покриває `keys/`, `*.key`, `.env`; сканер знаходить підкинутий фейковий keypair у tmp-копії). Імпл `.gitignore` (доповнення) + `.github/workflows/ci.yml` (скан секретів + `trace.py --check` + `pytest`).
+- [x] T-009 [FR-001-09, FR-001-10] Ключі через volume/env + CI-скан. Тест `tests/test_secrets.py` (репозиторій без `.env`/ключів: `.env.example` без секретів, `.gitignore` покриває `keys/`, `*.key`, `.env`; сканер знаходить підкинутий фейковий keypair у tmp-копії). Імпл `.gitignore` (доповнення) + `.github/workflows/ci.yml` (скан секретів + `trace.py --check` + `pytest`).
 
 ## Phase 6: User Story 4 — Локальна розробка (P2)
 

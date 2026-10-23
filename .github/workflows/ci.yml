@@ -1,0 +1,30 @@
+# impl: FR-001-10
+# impl: FR-001-10 (CI: скан секретів + trace --check + pytest)
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: secrets-scan
+        run: |
+          # Грубий скан: keypair-масиви, приватні ключі, мнемоніки. Жодних винятків.
+          if git ls-files | grep -Ei '\.key$|^keys/|\.pem$' ; then
+            echo "CI: keypair-файл у git"; exit 1
+          fi
+          if grep -rEi --include='*.py' --include='*.yaml' --include='*.yml' --include='*.json' --include='*.env*' \
+              -e 'private[_-]?key' -e 'mnemonic' -e '\b[1-9A-HJ-NP-Za-km-z]{32,44}\b' . \
+              | grep -v -e 'tests/test_secrets.py' -e 'docs/' -e 'specs/' -e '.github/workflows/ci.yml' ; then
+            echo "CI: підозрілий секрет у репо"; exit 1
+          fi
+          echo "secrets-scan: ok"
+      - name: trace
+        run: python3 scripts/trace.py --check
+      - name: pytest
+        run: PYTHONPATH=python python3 -m pytest -q

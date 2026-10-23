@@ -1,4 +1,5 @@
 # Одна команда: docker compose up -> dry-run. Live лише MODE=live.
+# impl: FR-001-09 (ключі лише через ./keys volume, RPC лише через env)
 services:
   pipeline:
     build: .
