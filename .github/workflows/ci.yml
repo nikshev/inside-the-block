@@ -26,5 +26,7 @@ jobs:
           echo "secrets-scan: ok"
       - name: trace
         run: python3 scripts/trace.py --check
+      - name: docs
+        run: python3 scripts/check_docs.py
       - name: pytest
         run: PYTHONPATH=python python3 -m pytest -q
