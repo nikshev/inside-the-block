@@ -14,7 +14,7 @@
 
 ## Phase 3: Розклад, відправка, збір
 
-- [ ] T-016 [FR-002-06] Вікна лідера + snapshot версій з фікстур RPC. Тест `tests/test_schedule.py`. Імпл `python/itb/schedule.py`.
+- [x] T-016 [FR-002-06] Вікна лідера + snapshot версій з фікстур RPC. Тест `tests/test_schedule.py`. Імпл `python/itb/schedule.py`.
 - [ ] T-017 [FR-002-07] RpcSender проти локального HTTP-стаба + DirectTpuStub. Тест `tests/test_sender.py` (стаб перевіряє `maxRetries=0`, base64 tx, запис path). Імпл `python/itb/sender.py`.
 - [ ] T-018 [FR-002-09] Collector: фікстура 3 слотів/15 tx → точні позиції + missing. Тест `tests/test_collector.py`. Імпл `python/itb/collector.py`.
 
