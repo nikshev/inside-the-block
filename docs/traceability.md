@@ -2,7 +2,7 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **12** · задач: **11** (виконано 7) · вимог у роботі: **8** · порушень: **0**
+Вимог: **12** · задач: **11** (виконано 8) · вимог у роботі: **7** · порушень: **0**
 
 ## 001-pipeline-safety
 
@@ -15,7 +15,7 @@
 | `FR-001-05` | Система MUST вести леджер витрат у файлі (append-only) | `T-003`, `T-007` | `python/itb/ledger.py` | `tests/test_spend_integration.py`, `tests/test_ledger.py` |
 | `FR-001-06` | Система MUST писати структуровані JSON-логи кожного кроку з | `T-004`, `T-011` | `python/itb/log.py` | `tests/test_log.py` |
 | `FR-001-07` | Система MUST зберігати сирі дані у фіксованій розкладці | `T-005`, `T-011` | `python/itb/storage.py` | `tests/test_storage.py` |
-| `FR-001-08` | Система MUST надавати скрипт `verify`, що за `data/` заново | `T-008` | — | — |
+| `FR-001-08` | Система MUST надавати скрипт `verify`, що за `data/` заново | `T-008` | `scripts/verify.py` | `tests/test_verify.py` |
 | `FR-001-09` | Система MUST тримати ключі лише через volume і RPC URL лише | `T-009` | — | — |
 | `FR-001-10` | Секрет випадково потрапив у репо: CI-чек падає до мержу (див. ). | `T-009` | — | — |
 | `FR-001-11` | Конфіг MUST мати `config_version` і кожен прогін MUST писати | `T-001`, `T-011` | `python/itb/config.py` | `tests/test_config.py` |
@@ -27,4 +27,4 @@
 - `T-002` (001-pipeline-safety) — виконано
 - `T-003` (001-pipeline-safety) — виконано
 - `T-007` (001-pipeline-safety) — виконано
-- `T-008` (001-pipeline-safety) — у роботі
+- `T-008` (001-pipeline-safety) — виконано

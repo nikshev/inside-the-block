@@ -34,7 +34,7 @@
 
 Незалежний тест: фікстура ≥ 10 tx → `verify` exit 0; зіпсована позиція → exit 1 із сигнатурою.
 
-- [ ] T-008 [FR-001-08] critical: Скрипт verify. Тест `tests/test_verify.py` (збіг 100% → 0; одна зіпсована позиція → 1 + сигнатура; `missing` слот не падає). Імпл `scripts/verify.py`. Контракт `contracts/verify.md`.
+- [x] T-008 [FR-001-08] critical: Скрипт verify. Тест `tests/test_verify.py` (збіг 100% → 0; одна зіпсована позиція → 1 + сигнатура; `missing` слот не падає). Імпл `scripts/verify.py`. Контракт `contracts/verify.md`.
 
 ## Phase 5: Безпека секретів + CI (P1-блокер мержу)
 
