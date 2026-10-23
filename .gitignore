@@ -3,6 +3,7 @@
 
 # Артефакти, відтворювані з коду — не в git
 /graphify-out/
+/.graphify/
 /vault/
 
 # Секрети
