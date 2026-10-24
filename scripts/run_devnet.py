@@ -136,7 +136,7 @@ def main(argv=None) -> int:
     cfg = C.load("config/experiment.yaml")
     sk64 = load_keypair(a.keypair)
     pub_b58 = base58.encode(sk64[32:])
-    print(f"payer: {pub_b58} (devnet-only ключ)")
+    print(f"payer: {pub_b58} (операційний ключ — перевір, що це очікувана адреса)")
     keypairs = {f"payer-pool-{i}": sk64 for i in range(12)}
     keypairs["payer-shared-conflict"] = sk64
 
