@@ -89,9 +89,12 @@ def analyze(data_dir: Path, min_pairs: int = 30, by_leader: bool = False) -> lis
         agr = {
             "fee": A.agreement(A.pairs_in_slot(rs, lambda r: r["cu_price"])),
             "reward": A.agreement(A.pairs_in_slot(rs, lambda r: r["reward_per_cu"])),
-            "send": A.agreement(A.pairs_in_slot(rs, lambda r: r["send_idx"])),
+            # H1 (FIFO): раніше відправлений — раніше в блоці, тому ключ
+            # інвертований: fee-напрямок («вищий перший») тут давав би 1-x.
+            "send": A.agreement(A.pairs_in_slot(rs, lambda r: -r["send_idx"])),
         }
         n_pairs = sum(1 for p in A.pairs_in_slot(rs, lambda r: r["cu_price"]) if not p["tie"])
+        stat_rows = [r for b in blist for r in b]
         tau = A.tau_pooled(blist, lambda r: r["cu_price"])
         lo, hi = A.bootstrap_ci(blist, lambda r: r["cu_price"], B=200, seed=7)
         p = A.permutation_p(blist, lambda r: r["cu_price"], P=199, seed=11)

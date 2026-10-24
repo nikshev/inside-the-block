@@ -199,7 +199,9 @@ def fire_batch(cfg, prepared: dict, sender, fetch, data_dir, ledger_path,
     for r in recs:
         emit({"batch_id": batch_id, "mode": "live", "config_version": cfg.config_version,
               "msg": "live-sent", "path": r.get("path", "?")})
-    landed = _collector.collect(data_dir, fetch)
+    landed = _collector.collect(
+        data_dir, fetch,
+        only={s["signature_b58"] for s in prepared["signed"]})
     return {"batch_id": batch_id, "mode": "live", "off_target": off_target,
             "excluded_from_analysis": off_target, "sent": len(recs),
             "signed": len(prepared["signed"]), "verified": len(prepared["signed"]),
