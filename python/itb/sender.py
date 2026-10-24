@@ -30,7 +30,7 @@ class RpcSender:
                 "method": "sendTransaction",
                 "params": [
                     base64.b64encode(t["wire"]).decode(),
-                    {"skipPreflight": True, "maxRetries": 0},
+                    {"skipPreflight": True, "maxRetries": 0, "encoding": "base64"},
                 ],
             }
             data = json.dumps(req).encode()
@@ -40,6 +40,8 @@ class RpcSender:
             )
             with urllib.request.urlopen(http_req, timeout=30) as resp:
                 result = json.loads(resp.read().decode())
+            if result.get("error"):
+                raise RuntimeError(f"sendTransaction: {result['error']}")
             recs.append(
                 {
                     "batch_id": batch_id,

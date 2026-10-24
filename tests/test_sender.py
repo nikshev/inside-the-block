@@ -22,6 +22,7 @@ class StubHandler(BaseHTTPRequestHandler):
         params, opts = body["params"][0], body["params"][1]
         assert opts.get("skipPreflight") is True
         assert opts.get("maxRetries") == 0
+        assert opts.get("encoding") == "base64"  # wire у base64, інакше нода відхилить
         base64.b64decode(params)  # валідний base64
         payload = json.dumps({"jsonrpc": "2.0", "id": body["id"],
                               "result": "sigSTUB"}).encode()
@@ -51,6 +52,34 @@ def test_rpc_sender_records_path_and_timestamp():
         assert recs[0]["target_slot"] == 100
         assert isinstance(recs[0]["sent_at_us"], int)
         assert recs[0]["signature_b58"] == "s1"
+    finally:
+        srv.shutdown()
+
+
+def test_rpc_error_raises_instead_of_silent_drop():
+    class ErrHandler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            ln = int(self.headers["Content-Length"])
+            body = json.loads(self.rfile.read(ln))
+            payload = json.dumps({"jsonrpc": "2.0", "id": body["id"],
+                                  "error": {"code": -32602, "message": "bad"}}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(payload.__len__()))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), ErrHandler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        import pytest
+        s = RpcSender(f"http://127.0.0.1:{srv.server_port}")
+        with pytest.raises(RuntimeError):
+            s.send([{"wire": b"x", "signature_b58": "s1", "target_slot": 1}],
+                   batch_id="b", idx_offset=0)
     finally:
         srv.shutdown()
 
