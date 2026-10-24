@@ -46,11 +46,15 @@ def load_joined(data_dir: Path, by_leader: bool = False) -> list:
             if row.get("status", "landed") != "landed":
                 continue
             s = sent.get(row["signature"], {})
-            try:
-                price = int(s.get("cu_price_lamports", 0))
-                limit = int(s.get("cu_limit", 200_000)) or 200_000
-            except ValueError:
-                price, limit = 0, 200_000
+
+            def _int(x, default=0):
+                try:
+                    return int(x)
+                except (TypeError, ValueError):
+                    return default
+
+            price = _int(s.get("cu_price_lamports", 0))
+            limit = _int(s.get("cu_limit", 200_000)) or 200_000
             label = s.get("validator_label", "?")
             if by_leader:
                 label = leaders.get(str(row["slot"]), label)[:8]
@@ -64,8 +68,8 @@ def load_joined(data_dir: Path, by_leader: bool = False) -> list:
                 "cu_price": price,
                 "reward_per_cu": price / limit,
                 # send_pos = реальне місце в порядку відправки; fallback idx
-                # лише для старих CSV без колонки (H1 за ними недійсний).
-                "send_idx": int(s.get("send_pos", s.get("send_idx", s.get("idx", 0)))),
+                # лише для дуже старих CSV без колонки (H1 за ними недійсний).
+                "send_idx": _int(s.get("send_pos", s.get("send_idx", s.get("idx", 0)))),
             })
     return out
 
