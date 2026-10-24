@@ -55,10 +55,32 @@ def _tau_a(xs: list, ys: list) -> float:
 
 
 def tau_rule(batch_rows: list, key_of) -> float:
-    """+1 = ідеальне слідування правилу (вищий ключ → раніша позиція)."""
+    """+1 = ідеальне слідування правилу (вищий ключ → раніша позиція).
+
+    Коректний лише всередині одного слота. Для кількох слотів — tau_pooled.
+    """
     xs = [key_of(r) for r in batch_rows]
     ys = [r["position"] for r in batch_rows]
     return -_tau_a(xs, ys)
+
+
+def tau_pooled(batches: list, key_of) -> float:
+    """Середній τ по слотах, зважений кількістю пар. Позиції з різних
+    слотів непорівнювані напряму (різний розмір блоків)."""
+    tot, acc = 0, 0.0
+    for b in batches:
+        by_slot: dict = {}
+        for r in b:
+            by_slot.setdefault(r["slot"], []).append(r)
+        for rows in by_slot.values():
+            xs = [key_of(r) for r in rows]
+            ys = [r["position"] for r in rows]
+            n = len(rows)
+            w = n * (n - 1) / 2
+            if w > 0:
+                acc += -_tau_a(xs, ys) * w
+                tot += w
+    return acc / tot if tot else 0.0
 
 
 def _pooled_agreement(batches: list, key_of) -> float | None:

@@ -40,6 +40,23 @@ class TestTau:
         b = rows(1, [50, 40, 30, 20, 10])
         assert A.tau_rule(b, lambda r: r["cu_price"]) == 1.0
 
+    def test_pooled_tau_ignores_cross_slot_scale(self):
+        # Той самий ідеальний порядок у двох слотах різного розміру:
+        # позиції 0..4 і 100..104 — pooled-наївно дасть сміття, послотово 1.0.
+        b1 = rows(1, [50, 40, 30, 20, 10])
+        b2 = [dict(r, slot=2, position=r["position"] + 100) for r in rows(2, [50, 40, 30, 20, 10])]
+        assert A.tau_pooled([b1, b2], lambda r: r["cu_price"]) == 1.0
+
+    def test_pooled_tau_random_near_zero(self):
+        import random
+        rng = random.Random(11)
+        batches = []
+        for s in range(5):
+            fees = list(range(20))
+            rng.shuffle(fees)
+            batches.append(rows(s, fees))
+        assert abs(A.tau_pooled(batches, lambda r: r["cu_price"])) < 0.2
+
     def test_bootstrap_ci_perfect_excludes_half(self):
         batches = [rows(s, [50, 40, 30, 20, 10]) for s in range(5)]
         lo, hi = A.bootstrap_ci(batches, lambda r: r["cu_price"], B=200, seed=1)
