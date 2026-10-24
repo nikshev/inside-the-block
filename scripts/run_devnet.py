@@ -130,41 +130,100 @@ def main(argv=None) -> int:
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--batches", type=int, default=1)
     ap.add_argument("--blockhash", default=None, help="hex; у live береться з RPC")
+    ap.add_argument("--label", default="mainnet-1", help="мітка валідатора/прогону в batch_id")
+    ap.add_argument("--burst", action="store_true",
+                    help="залп: підписати все, відправити всі поспіль (для концентрації в слоті)")
+    ap.add_argument("--attempts", type=int, default=1,
+                    help="спроб залпу зі свіжим blockhash (кожна спроба рахується guard)")
+    ap.add_argument("--validator-identity", default=None,
+                    help="identity цільового валідатора; без нього — опортуністична відправка")
+    ap.add_argument("--no-wait", action="store_true",
+                    help="не чекати вікна лідера (тільки для smoke)")
     a = ap.parse_args(argv)
     mode = "live" if a.live else "dry-run"
 
     cfg = C.load("config/experiment.yaml")
+    try:
+        import yaml as _yaml
+        _raw = _yaml.safe_load(open("config/experiment.yaml", encoding="utf-8"))
+    except ImportError:
+        _raw = {}
+    _arms = (_raw or {}).get("arms", {})
     sk64 = load_keypair(a.keypair)
     pub_b58 = base58.encode(sk64[32:])
     print(f"payer: {pub_b58} (операційний ключ — перевір, що це очікувана адреса)")
     keypairs = {f"payer-pool-{i}": sk64 for i in range(12)}
     keypairs["payer-shared-conflict"] = sk64
 
+    from itb import schedule as S
+
+    def fresh_bh():
+        bh_b58 = rpc_call(a.rpc, "getLatestBlockhash",
+                          [{"commitment": "confirmed"}])["value"]["blockhash"]
+        print(f"blockhash: {bh_b58}")
+        return base58.decode(bh_b58)
+
     if a.blockhash:
         bh = bytes.fromhex(a.blockhash)
     elif mode == "dry-run":
         raise SystemExit("--dry-run потребує --blockhash (без мережі)")
     else:
-        bh_b58 = rpc_call(a.rpc, "getLatestBlockhash",
-                          [{"commitment": "confirmed"}])["value"]["blockhash"]
-        bh = base58.decode(bh_b58)
-        print(f"blockhash: {bh_b58}")
+        bh = fresh_bh()
     sender = RpcSender(a.rpc).send if mode == "live" else DirectTpuStub().send
     fetch = (lambda slot: fetch_block(a.rpc, slot) if slot > 0 else None) \
         if mode == "live" else None
 
-    levels = {"A": [0, 500, 1000], "B": [5000], "C": [5000, 100000, 200000],
-              "D": [0, 500, 1000]}[a.arm]
-    window = {"validator": "devnet-smoke", "label": "devnet-1",
+    levels = {"A": _arms.get("A_levels", [0, 500, 1000]),
+              "B": [_arms.get("B_price", 5000)],
+              "C": [_arms.get("C_price", 5000)] + _arms.get("C_limits", [200000]),
+              "D": _arms.get("D_levels", [0, 500, 1000])}[a.arm]
+    ident = a.validator_identity or f"{a.label}-opportunistic"
+    window = {"validator": ident, "label": a.label,
               "start_slot": 0, "end_slot": 0}
+    strategy = "burst" if a.burst else "stream"
+
+    def wait_for_window():
+        """Знайти наступне вікно валідатора і дочекатися slot start-2."""
+        import time
+        epoch = rpc_call(a.rpc, "getEpochInfo", [{"commitment": "confirmed"}])["epoch"]
+        sched = rpc_call(a.rpc, "getLeaderSchedule", [epoch])
+        wins = S.windows(sched, ident, epoch)
+        cur = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
+        future = [w for w in wins if w["start_slot"] > cur + 2]
+        if not future:
+            raise SystemExit(f"немає майбутніх вікон для {ident} в епосі {epoch}")
+        w = future[0]
+        window.update(w)
+        print(f"вікно: {w['start_slot']}..{w['end_slot']} (зараз {cur}), чекаю...")
+        while True:
+            cur = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
+            if cur >= w["start_slot"] - 2:
+                return
+            time.sleep(0.2)
+
     for b in range(a.batches):
-        rep = measure.run_batch(cfg, a.arm, a.seed + b, levels, window, bh,
-                                keypairs, sender, fetch, mode,
-                                a.data_dir, a.ledger, actual_leader="devnet-smoke",
-                                batch_seq=b)
-        print(f"batch {b}: {rep}")
+        if mode == "live" and a.validator_identity and not a.no_wait:
+            wait_for_window()
+        for att in range(a.attempts if mode == "live" else 1):
+            if mode == "live" and (a.burst or att > 0) and not a.blockhash:
+                bh = fresh_bh()
+            rep = measure.run_batch(cfg, a.arm, a.seed + b, levels, window, bh,
+                                    keypairs, sender, fetch, mode,
+                                    a.data_dir, a.ledger, actual_leader=ident,
+                                    batch_seq=b * 100 + att, send_strategy=strategy)
+            print(f"batch {b} attempt {att}: {rep}")
     if mode == "live":
         found, missing = recollect_with_actual_slots(a.data_dir, a.rpc)
+        leaders = {}
+        for sig, slot in found.items():
+            try:
+                leaders[str(slot)] = rpc_call(
+                    a.rpc, "getSlotLeaders", [slot, 1])[0]
+            except Exception as e:
+                leaders[str(slot)] = f"ERR {e}"[:80]
+        with open(Path(a.data_dir) / "leaders.json", "w") as f:
+            json.dump({"target": ident, "slots": leaders}, f, indent=2)
+        print(f"лідери слотів: {leaders}")
         if missing:
             print(f"не підтверджено: {missing}")
             return 1

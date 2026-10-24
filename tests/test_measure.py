@@ -88,6 +88,30 @@ def test_live_sends_streaming_in_send_order(tmp_path):
     assert all(len(c) == 1 for c in calls), "потоково: по одній tx за виклик"
 
 
+def test_burst_sends_same_order(tmp_path):
+    """Burst: усі підписи готові до відправки, порядок той самий."""
+    from itb import arms as A
+
+    cfg = make_cfg()
+    calls = []
+    spec = A.build_arm_batch("B", 5, [100],
+                             {"tx_per_batch": 8, "cu_limit": 200_000})
+    report = run_batch(
+        cfg, arm="B", seed=5, levels=[100],
+        window={"validator": "V1", "label": "agave-1", "start_slot": 50, "end_slot": 53},
+        blockhash=bytes(range(32)), keypairs=keypairs(),
+        sender=lambda txs, batch_id, idx_offset: (
+            calls.append([t["idx"] for t in txs]),
+            [{"path": "stub", "signature_b58": t["signature_b58"]} for t in txs],
+        )[1],
+        fetch=lambda slot: None, mode="live", data_dir=tmp_path / "data",
+        ledger_path=tmp_path / "ledger.jsonl", actual_leader="V1",
+        send_strategy="burst",
+    )
+    assert report["sent"] == 8
+    assert [i for c in calls for i in c] == spec["send_order"]
+
+
 def test_off_target_excluded_from_analysis(tmp_path):
     report = run_batch(
         make_cfg(), arm="B", seed=5, levels=[100],

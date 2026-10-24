@@ -23,7 +23,7 @@ def run_batch(
     cfg, arm: str, seed: int, levels: list, window: dict,
     blockhash: bytes, keypairs: dict, sender, fetch,
     mode: str, data_dir, ledger_path, actual_leader: str,
-    batch_seq: int = 0, emit=None,
+    batch_seq: int = 0, emit=None, send_strategy: str = "stream",
 ) -> dict:
     """Прогнати один батч. Повертає звіт."""
     if mode not in ("dry-run", "live"):
@@ -67,7 +67,7 @@ def run_batch(
     # не прострочився, доки повільний ed25519 підписує решту батча.
     signed = []
     recs = []
-    for pos, idx in enumerate(spec["send_order"]):
+    def _build_one(idx):
         t = spec["txs"][idx]
         payload = _txb.build_memo_transfer(
             _base58.encode(_pubkey_bytes(keypairs, t["payer"])),
@@ -76,18 +76,27 @@ def run_batch(
         sk = keypairs[t["payer"]]
         sig = _txb.sign_payload(payload, sk)
         assert _txb.verify_signature(payload, sig, sk[32:]), "підпис не верифікується"
-        tx = {"wire": _txb.build_tx_wire(payload, sig),
-              "signature_b58": _base58.encode(sig),
-              "target_slot": window["start_slot"],
-              "sent_at_us": time.time_ns() // 1000,
-              "batch_id": batch_id, "idx": t["idx"],
-              "cu_price_lamports": t["cu_price_lamports"],
-              "cu_limit": t["cu_limit"], "payer": t["payer"],
-              "seed": seed, "path": "stub-local",
-              "config_version": cfg.config_version}
-        signed.append(tx)
-        if mode == "live":
+        return {"wire": _txb.build_tx_wire(payload, sig),
+                "signature_b58": _base58.encode(sig),
+                "target_slot": window["start_slot"],
+                "sent_at_us": time.time_ns() // 1000,
+                "batch_id": batch_id, "idx": t["idx"],
+                "cu_price_lamports": t["cu_price_lamports"],
+                "cu_limit": t["cu_limit"], "payer": t["payer"],
+                "seed": seed, "path": "stub-local",
+                "config_version": cfg.config_version}
+    if mode == "live" and send_strategy == "burst":
+        # Залп: підписати все, потім відправити всі поспіль.
+        for idx in spec["send_order"]:
+            signed.append(_build_one(idx))
+        for pos, tx in enumerate(signed):
             recs.extend(sender([tx], batch_id=batch_id, idx_offset=pos))
+    else:
+        for pos, idx in enumerate(spec["send_order"]):
+            tx = _build_one(idx)
+            signed.append(tx)
+            if mode == "live":
+                recs.extend(sender([tx], batch_id=batch_id, idx_offset=pos))
     sent_rows = [{
         "batch_id": batch_id, "idx": s["idx"], "signature": s["signature_b58"],
         "memo_tag": f"{batch_id}:{s['idx']}", "validator_label": window.get("label", ""),
