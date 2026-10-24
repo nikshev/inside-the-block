@@ -88,9 +88,10 @@ def confirm_slots(rpc_url, signatures, timeout_s=180):
 
 
 def recollect_with_actual_slots(data_dir, rpc_url, only_sigs=None):
-    """Переписати target_slot за фактичними слотами і перезбирати landed.
+    """Перезібрати landed.csv за фактичними слотами.
 
-    only_sigs: збирати лише ці сигнатури (ігнорувати інші рядки sent.csv).
+    sent.csv НЕ чіпає (її пише fire_batch; перезапис стирав історію).
+    only_sigs: збирати лише ці сигнатури.
     """
     import csv
     from itb import collector as C
@@ -101,14 +102,18 @@ def recollect_with_actual_slots(data_dir, rpc_url, only_sigs=None):
         rows = [r for r in rows if r["signature"] in keep]
     sigs = [r["signature"] for r in rows]
     found, missing = confirm_slots(rpc_url, sigs)
-    print(f"confirmed: {len(found)}, unconfirmed: {len(missing)}")
-    slot_of = {s: found.get(s) for s in sigs}
-    fixed = [dict(r, target_slot=slot_of[r["signature"]] if slot_of[r["signature"]] else -1)
-             for r in rows]
-    with (data_dir / "sent.csv").open("w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-        w.writeheader()
-        w.writerows(fixed)
+    # Записати фактичні слоти в sent.csv (лише для цих сигнатур).
+    if found:
+        pmap = {r["signature"]: r for r in
+                csv.DictReader(data_dir.joinpath("sent.csv").open(encoding="utf-8"))}
+        for sig, slot in found.items():
+            if sig in pmap:
+                pmap[sig]["target_slot"] = slot
+        with (data_dir / "sent.csv").open("w", encoding="utf-8", newline="") as f:
+            rows_all = list(pmap.values())
+            w = csv.DictWriter(f, fieldnames=list(rows_all[0].keys()))
+            w.writeheader()
+            w.writerows(rows_all)
     # Upsert landed: прибрати старі рядки цих сигнатур, потім C.collect допише свіжі.
     landed_p = data_dir / "landed.csv"
     if landed_p.is_file():
@@ -119,7 +124,8 @@ def recollect_with_actual_slots(data_dir, rpc_url, only_sigs=None):
                                               "batch_id", "idx", "status"])
             w.writeheader()
             w.writerows(keep)
-    C.collect(data_dir, lambda slot: fetch_block(rpc_url, slot) if slot >= 0 else None)
+    C.collect(data_dir, lambda slot: fetch_block(rpc_url, slot) if slot >= 0 else None,
+              only=set(sigs) if only_sigs is not None else None)
     return found, missing
 
 
@@ -238,8 +244,8 @@ def main(argv=None) -> int:
                                     batch_seq=arm_batch_seq * 100 + att, jobs=a.jobs,
                                     write_sent=False)
             print(f"підписано за {time.time() - t0:.1f} с")
-            for row_prep in prep["signed"]:
-                row_prep["target_slot"] = w["start_slot"]
+            # target_slot в sent.csv проставить recollect за фактом;
+            # тут лишаємо -1 (жодних відносних слотів у даних).
             while True:
                 cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
                 if cur_abs >= target_abs - 2:

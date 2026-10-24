@@ -17,12 +17,19 @@ def _sigs_in_order(block: dict) -> list:
             for t in block.get("transactions", [])]
 
 
-def collect(data_dir, fetch) -> list:
-    """Прочитати sent.csv, зібрати landed.csv + blocks/. Повернути записи."""
+def collect(data_dir, fetch, only: set | None = None) -> list:
+    """Прочитати sent.csv, зібрати landed.csv + blocks/.
+
+    only: обмежитися цими сигнатурами (для повторного збору без дублікатів).
+    Повторний виклик без only допише дублікати — викликач має прибрати старі
+    рядки сам (див. run_devnet.recollect_with_actual_slots).
+    """
     data_dir = Path(data_dir)
     out = []
     with (data_dir / "sent.csv").open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
+            if only is not None and row["signature"] not in only:
+                continue
             slot = int(row["target_slot"])
             sig = row["signature"]
             block = fetch(slot)

@@ -25,8 +25,17 @@ def parse_arm(batch_id: str) -> str:
     return "?"
 
 
-def load_joined(data_dir: Path) -> list:
-    """Landed ⨝ sent за сигнатурою (ключі: fee, reward/cost, send_idx)."""
+def load_joined(data_dir: Path, by_leader: bool = False) -> list:
+    """Landed ⨝ sent за сигнатурою (ключі: fee, reward/cost, send_idx).
+
+    by_leader: мітка групи — фактичний лідер слота (leaders.json),
+    інакше — validator_label з sent.csv.
+    """
+    leaders = {}
+    if by_leader:
+        lp = data_dir / "leaders.json"
+        if lp.is_file():
+            leaders = json.loads(lp.read_text(encoding="utf-8")).get("slots", {})
     sent = {}
     with (data_dir / "sent.csv").open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
@@ -42,23 +51,28 @@ def load_joined(data_dir: Path) -> list:
                 limit = int(s.get("cu_limit", 200_000)) or 200_000
             except ValueError:
                 price, limit = 0, 200_000
+            label = s.get("validator_label", "?")
+            if by_leader:
+                label = leaders.get(str(row["slot"]), label)[:8]
             out.append({
                 "slot": int(row["slot"]),
                 "batch_id": row.get("batch_id", ""),
-                "validator": s.get("validator_label", "?"),
+                "validator": label,
                 "arm": parse_arm(row.get("batch_id", "")),
                 "signature": row["signature"],
                 "position": int(row["position"]),
                 "cu_price": price,
                 "reward_per_cu": price / limit,
-                "send_idx": int(s.get("send_idx", s.get("idx", 0))),
+                # send_pos = реальне місце в порядку відправки; fallback idx
+                # лише для старих CSV без колонки (H1 за ними недійсний).
+                "send_idx": int(s.get("send_pos", s.get("send_idx", s.get("idx", 0)))),
             })
     return out
 
 
-def analyze(data_dir: Path, min_pairs: int = 30) -> list:
+def analyze(data_dir: Path, min_pairs: int = 30, by_leader: bool = False) -> list:
     """Метрики на (validator, arm)."""
-    rows = load_joined(data_dir)
+    rows = load_joined(data_dir, by_leader=by_leader)
     groups: dict = {}
     for r in rows:
         groups.setdefault((r["validator"], r["arm"]), []).append(r)
@@ -94,10 +108,11 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 2
     min_pairs = 30
+    by_leader = "--by-leader" in argv
     for i, a in enumerate(argv):
         if a == "--min-pairs" and i + 1 < len(argv):
             min_pairs = int(argv[i + 1])
-    results = analyze(Path(args[0]), min_pairs)
+    results = analyze(Path(args[0]), min_pairs, by_leader=by_leader)
     print(R.render_markdown(results, source=args[0]))
     return 0
 

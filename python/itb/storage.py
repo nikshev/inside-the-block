@@ -13,7 +13,7 @@ from pathlib import Path
 SENT_FIELDS = (
     "batch_id", "idx", "signature", "memo_tag", "validator_label",
     "cu_limit", "cu_price_lamports", "payer", "sent_at_us", "path",
-    "target_slot", "config_version", "stub_signature",
+    "target_slot", "config_version", "stub_signature", "send_pos",
 )
 
 LANDED_FIELDS = ("signature", "slot", "position", "batch_id", "idx", "status")

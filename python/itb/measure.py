@@ -108,7 +108,7 @@ def _sent_row(window, cfg, batch_id, s):
         "cu_limit": s["cu_limit"], "cu_price_lamports": s["cu_price_lamports"],
         "payer": s["payer"], "sent_at_us": s["sent_at_us"], "path": "stub-local",
         "target_slot": s["target_slot"], "config_version": cfg.config_version,
-        "stub_signature": False}
+        "stub_signature": False, "send_pos": s.get("send_pos", s["idx"])}
 
 
 def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
@@ -145,9 +145,13 @@ def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
         t = spec["txs"][idx]
         signed.append({"wire": _txb.build_tx_wire(payloads[pos], sig),
                        "signature_b58": _base58.encode(sig),
-                       "target_slot": window["start_slot"],
+                       # -1 = слот ще невідомий; фактичний ставить recollect.
+                       # (Колись тут був window start у відносних одиницях —
+                       # збирач тягнув чужі древні блоки. Не повторювати.)
+                       "target_slot": -1,
                        "sent_at_us": time.time_ns() // 1000,
                        "batch_id": batch_id, "idx": t["idx"],
+                       "send_pos": pos,  # місце в порядку відправки (для H1)
                        "cu_price_lamports": t["cu_price_lamports"],
                        "cu_limit": t["cu_limit"], "payer": t["payer"],
                        "seed": seed, "path": "stub-local",

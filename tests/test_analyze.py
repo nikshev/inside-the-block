@@ -52,3 +52,15 @@ def test_analyze_strict_on_perfect_arm(tmp_path):
     assert p.returncode == 0, p.stderr
     assert "strict" in p.stdout
     assert "agave-1" in p.stdout
+
+
+def test_analyze_by_leader(tmp_path):
+    make_data(tmp_path / "data2")
+    (tmp_path / "data2" / "leaders.json").write_text(
+        json.dumps({"target": "x", "slots": {"100": "LEADaaa111", "101": "LEADaaa111",
+                                             "102": "LEADaaa111"}}))
+    p = subprocess.run([sys.executable, "scripts/analyze.py", str(tmp_path / "data2"),
+                        "--min-pairs", "5", "--by-leader"],
+                       capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr
+    assert "LEADaaa1" in p.stdout

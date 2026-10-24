@@ -4,6 +4,8 @@
 
 - `pairs_in_slot(landed_rows, key_of) -> list[Pair]` — усі невпорядковані пари
   одного слота; `tie=True` якщо ключі рівні (виключаються з agreement).
+  Ключі: `cu_price` (H2), `reward_per_cu` (H3), **`send_pos` (H1 — реальне
+  місце в порядку відправки, НЕ idx; див. виправлення 2026-10-24)**.
 - `agreement(pairs) -> float | None` — частка пар, де раніша позиція має
   вищий ключ; безлад = 0.5.
 - `kendall_tau(xs, ys) -> float` — класичний τ-a (нічиї в чисельнику 0).
