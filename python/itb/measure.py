@@ -62,8 +62,11 @@ def run_batch(
     else:
         spent, ok, reason = 0, True, "dry-run"
 
-    # Build + sign + verify (порядок відправки — send_order).
+    # Build + sign + verify. Dry-run: усе й одразу, без відправки.
+    # Live: потоково — підписав→перевірив→відправив одразу, щоб blockhash
+    # не прострочився, доки повільний ed25519 підписує решту батча.
     signed = []
+    recs = []
     for pos, idx in enumerate(spec["send_order"]):
         t = spec["txs"][idx]
         payload = _txb.build_memo_transfer(
@@ -73,15 +76,18 @@ def run_batch(
         sk = keypairs[t["payer"]]
         sig = _txb.sign_payload(payload, sk)
         assert _txb.verify_signature(payload, sig, sk[32:]), "підпис не верифікується"
-        signed.append({"wire": _txb.build_tx_wire(payload, sig),
-                       "signature_b58": _base58.encode(sig),
-                       "target_slot": window["start_slot"],
-                       "sent_at_us": time.time_ns() // 1000,
-                       "batch_id": batch_id, "idx": t["idx"],
-                       "cu_price_lamports": t["cu_price_lamports"],
-                       "cu_limit": t["cu_limit"], "payer": t["payer"],
-                       "seed": seed, "path": "stub-local",
-                       "config_version": cfg.config_version})
+        tx = {"wire": _txb.build_tx_wire(payload, sig),
+              "signature_b58": _base58.encode(sig),
+              "target_slot": window["start_slot"],
+              "sent_at_us": time.time_ns() // 1000,
+              "batch_id": batch_id, "idx": t["idx"],
+              "cu_price_lamports": t["cu_price_lamports"],
+              "cu_limit": t["cu_limit"], "payer": t["payer"],
+              "seed": seed, "path": "stub-local",
+              "config_version": cfg.config_version}
+        signed.append(tx)
+        if mode == "live":
+            recs.extend(sender([tx], batch_id=batch_id, idx_offset=pos))
     sent_rows = [{
         "batch_id": batch_id, "idx": s["idx"], "signature": s["signature_b58"],
         "memo_tag": f"{batch_id}:{s['idx']}", "validator_label": window.get("label", ""),
@@ -99,7 +105,7 @@ def run_batch(
                 "excluded_from_analysis": off_target, "sent": 0,
                 "signed": len(signed), "verified": len(signed), "decision": reason}
 
-    recs = sender(signed, batch_id=batch_id, idx_offset=0)
+    # Live: recs уже зібрано потоково; dry-run сюди не доходить.
     _ledger.append(ledger_path, {
         "batch_id": batch_id, "decided_at": "2026-10-23T00:00:00Z",
         "config_version": cfg.config_version, "batch_max_lamports": bmax,
