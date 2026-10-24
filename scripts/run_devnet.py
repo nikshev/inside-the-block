@@ -109,9 +109,16 @@ def recollect_with_actual_slots(data_dir, rpc_url, only_sigs=None):
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
         w.writerows(fixed)
-    landed = data_dir / "landed.csv"
-    if landed.is_file():
-        landed.unlink()  # прибрати missing-заглушки первинного збору
+    # Upsert landed: прибрати старі рядки цих сигнатур, потім C.collect допише свіжі.
+    landed_p = data_dir / "landed.csv"
+    if landed_p.is_file():
+        keep = [r for r in csv.DictReader(landed_p.open(encoding="utf-8"))
+                if r["signature"] not in set(sigs)]
+        with landed_p.open("w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["signature", "slot", "position",
+                                              "batch_id", "idx", "status"])
+            w.writeheader()
+            w.writerows(keep)
     C.collect(data_dir, lambda slot: fetch_block(rpc_url, slot) if slot >= 0 else None)
     return found, missing
 
@@ -191,50 +198,46 @@ def main(argv=None) -> int:
     strategy = "burst" if a.burst else "stream"
 
     def live_targeted(arm_batch_seq):
-        """Підписати заздалегідь → вікно в межах життя blockhash → залп.
-
-        Повертає rep fire_batch. Кидає SystemExit, якщо вікна немає.
-        """
+        """Знайти вікно → дочекатися (start - запас) → свіжий blockhash →
+        підписати паралельно → залп у вікно. Повертає rep fire_batch."""
         import time
         from itb import measure as M
         last_err = "no-attempt"
         for att in range(max(1, a.attempts)):
-            info = rpc_call(a.rpc, "getLatestBlockhash",
-                            [{"commitment": "confirmed"}])["value"]
-            bh = base58.decode(info["blockhash"])
-            # Увага: lastValidBlockHeight — це ВИСОТА, не слот. Дедлайн рахуємо
-            # від слота отримання: ~150 слотів життя, запас 20.
-            bh_slot = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
-            prep = M.prepare_batch(cfg, a.arm, a.seed + arm_batch_seq, levels,
-                                    window, bh, keypairs, a.data_dir,
-                                    batch_seq=arm_batch_seq * 100 + att, jobs=a.jobs,
-                                    write_sent=False)
             epoch_info = rpc_call(a.rpc, "getEpochInfo", [{"commitment": "confirmed"}])
             cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
-            if cur_abs >= bh_slot + 130:
-                last_err = "blockhash-expired-during-sign"
-                continue
             first_slot = cur_abs - epoch_info["slotIndex"]
             sched = rpc_call(a.rpc, "getLeaderSchedule", [])
             if sched is None:
                 raise SystemExit("getLeaderSchedule повернув null; спробуй інший RPC")
             wins = S.windows(sched, ident, epoch_info["epoch"])
             cur_rel = cur_abs - first_slot
-            latest_start = (bh_slot + 130) - first_slot
-            future = [w for w in wins
-                      if cur_rel + 2 < w["start_slot"] < latest_start - 5]
+            future = [w for w in wins if w["start_slot"] > cur_rel + 40]
             if not future:
-                last_err = "no-window-in-bh-lifetime"
+                last_err = "no-future-window"
+                time.sleep(10)
                 continue
             w = future[0]
             window.update(w)
-            for row_prep in prep["signed"]:
-                row_prep["target_slot"] = w["start_slot"]
             target_abs = first_slot + w["start_slot"] - 2
             print(f"спроба {att}: вікно rel {w['start_slot']}..{w['end_slot']} "
                   f"(abs {first_slot + w['start_slot']}), чекаю abs {target_abs}...")
-            while rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}]) < target_abs:
-                time.sleep(0.2)
+            while True:
+                cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
+                if cur_abs >= target_abs - 25:  # запас на паралельний підпис
+                    break
+                time.sleep(0.5)
+            info = rpc_call(a.rpc, "getLatestBlockhash",
+                            [{"commitment": "confirmed"}])["value"]
+            bh = base58.decode(info["blockhash"])
+            t0 = time.time()
+            prep = M.prepare_batch(cfg, a.arm, a.seed + arm_batch_seq, levels,
+                                    window, bh, keypairs, a.data_dir,
+                                    batch_seq=arm_batch_seq * 100 + att, jobs=a.jobs,
+                                    write_sent=False)
+            print(f"підписано за {time.time() - t0:.1f} с")
+            for row_prep in prep["signed"]:
+                row_prep["target_slot"] = w["start_slot"]
             return M.fire_batch(cfg, prep, sender, fetch, a.data_dir, a.ledger)
         raise SystemExit(f"live_targeted: усі спроби вичерпано ({last_err})")
 
@@ -259,7 +262,13 @@ def main(argv=None) -> int:
     if mode == "live":
         found, missing = recollect_with_actual_slots(
             a.data_dir, a.rpc, only_sigs=fired_sigs or None)
+        leaders_path = Path(a.data_dir) / "leaders.json"
         leaders = {}
+        if leaders_path.is_file():
+            try:
+                leaders = json.load(leaders_path.open()) .get("slots", {})
+            except (json.JSONDecodeError, AttributeError):
+                leaders = {}
         for sig, slot in found.items():
             try:
                 leaders[str(slot)] = rpc_call(
