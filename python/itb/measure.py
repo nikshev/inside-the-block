@@ -62,71 +62,119 @@ def run_batch(
     else:
         spent, ok, reason = 0, True, "dry-run"
 
-    # Build + sign + verify. Dry-run: усе й одразу, без відправки.
-    # Live: потоково — підписав→перевірив→відправив одразу, щоб blockhash
-    # не прострочився, доки повільний ed25519 підписує решту батча.
-    signed = []
-    recs = []
-    def _build_one(idx):
-        t = spec["txs"][idx]
-        payload = _txb.build_memo_transfer(
-            _base58.encode(_pubkey_bytes(keypairs, t["payer"])),
-            blockhash, t["cu_limit"], t["cu_price_lamports"],
-            f"{batch_id}:{t['idx']}")
-        sk = keypairs[t["payer"]]
-        sig = _txb.sign_payload(payload, sk)
-        assert _txb.verify_signature(payload, sig, sk[32:]), "підпис не верифікується"
-        return {"wire": _txb.build_tx_wire(payload, sig),
-                "signature_b58": _base58.encode(sig),
-                "target_slot": window["start_slot"],
-                "sent_at_us": time.time_ns() // 1000,
-                "batch_id": batch_id, "idx": t["idx"],
-                "cu_price_lamports": t["cu_price_lamports"],
-                "cu_limit": t["cu_limit"], "payer": t["payer"],
-                "seed": seed, "path": "stub-local",
-                "config_version": cfg.config_version}
-    if mode == "live" and send_strategy == "burst":
-        # Залп: підписати все, потім відправити всі поспіль.
-        for idx in spec["send_order"]:
-            signed.append(_build_one(idx))
-        for pos, tx in enumerate(signed):
-            recs.extend(sender([tx], batch_id=batch_id, idx_offset=pos))
-    else:
-        for pos, idx in enumerate(spec["send_order"]):
-            tx = _build_one(idx)
-            signed.append(tx)
-            if mode == "live":
-                recs.extend(sender([tx], batch_id=batch_id, idx_offset=pos))
-    sent_rows = [{
+    # Build + sign + verify — завжди все й одразу (див. prepare_batch).
+    # Відправка — лише у fire_batch, щоб ранер міг підписати заздалегідь
+    # і вдарити залпом точно у вікно лідера.
+    prepared = prepare_batch(cfg, arm, seed, levels, window, blockhash,
+                             keypairs, data_dir, batch_seq, emit)
+    signed = prepared["signed"]
+    bmax = prepared["bmax"]
+
+    if mode == "dry-run":
+        emit({"batch_id": prepared["batch_id"], "mode": mode,
+              "config_version": cfg.config_version,
+              "msg": "would-stop-before-send", "batch_max_lamports": bmax,
+              "path": "stub-local"})
+        return {"batch_id": prepared["batch_id"], "mode": mode,
+                "off_target": off_target,
+                "excluded_from_analysis": off_target, "sent": 0,
+                "signed": len(signed), "verified": len(signed), "decision": reason}
+
+    return fire_batch(cfg, prepared, sender, fetch, data_dir, ledger_path,
+                      emit=emit)
+
+
+def _build_one(cfg, spec, window, blockhash, keypairs, batch_id, batch_seq, seed, idx):
+    t = spec["txs"][idx]
+    payload = _txb.build_memo_transfer(
+        _base58.encode(_pubkey_bytes(keypairs, t["payer"])),
+        blockhash, t["cu_limit"], t["cu_price_lamports"],
+        f"{batch_id}:{t['idx']}")
+    sk = keypairs[t["payer"]]
+    sig = _txb.sign_payload(payload, sk)
+    assert _txb.verify_signature(payload, sig, sk[32:]), "підпис не верифікується"
+    return {"wire": _txb.build_tx_wire(payload, sig),
+            "signature_b58": _base58.encode(sig),
+            "target_slot": window["start_slot"],
+            "sent_at_us": time.time_ns() // 1000,
+            "batch_id": batch_id, "idx": t["idx"],
+            "cu_price_lamports": t["cu_price_lamports"],
+            "cu_limit": t["cu_limit"], "payer": t["payer"],
+            "seed": seed, "path": "stub-local",
+            "config_version": cfg.config_version}
+
+
+def _sent_row(window, cfg, batch_id, s):
+    return {
         "batch_id": batch_id, "idx": s["idx"], "signature": s["signature_b58"],
         "memo_tag": f"{batch_id}:{s['idx']}", "validator_label": window.get("label", ""),
         "cu_limit": s["cu_limit"], "cu_price_lamports": s["cu_price_lamports"],
         "payer": s["payer"], "sent_at_us": s["sent_at_us"], "path": "stub-local",
         "target_slot": s["target_slot"], "config_version": cfg.config_version,
-        "stub_signature": False} for s in signed]
-    _storage.write_sent(data_dir, sent_rows)
+        "stub_signature": False}
 
-    if mode == "dry-run":
-        emit({"batch_id": batch_id, "mode": mode, "config_version": cfg.config_version,
-              "msg": "would-stop-before-send", "batch_max_lamports": bmax,
-              "path": "stub-local"})
-        return {"batch_id": batch_id, "mode": mode, "off_target": off_target,
+
+def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
+                  data_dir, batch_seq=0, emit=None) -> dict:
+    """Побудувати+підписати+верифікувати батч і записати sent.csv.
+
+    Жодної відправки, жодного леджера, жодної мережі — придатне для dry-run
+    і для завчасного підпису перед вікном лідера.
+    """
+    emit = emit or _log.emit
+    data_dir = Path(data_dir)
+    batch_id = f"{window.get('label', 'w')}-{arm}-{batch_seq}-{seed}"
+    spec = _arms.build_arm_batch(arm, seed, levels,
+                                 {"tx_per_batch": cfg.batch.tx_per_batch,
+                                  "cu_limit": cfg.batch.cu_limit})
+    n = len(spec["txs"])
+    max_price = max(t["cu_price_lamports"] for t in spec["txs"])
+    bmax = _guard.batch_max_lamports(n, cfg.base_fee_lamports, max_price)
+    signed = [_build_one(cfg, spec, window, blockhash, keypairs,
+                         batch_id, batch_seq, seed, idx)
+              for idx in spec["send_order"]]
+    _storage.write_sent(
+        data_dir, [_sent_row(window, cfg, batch_id, s) for s in signed])
+    return {"batch_id": batch_id, "signed": signed, "bmax": bmax, "spec": spec,
+            "window": window, "seed": seed, "arm": arm}
+
+
+def fire_batch(cfg, prepared: dict, sender, fetch, data_dir, ledger_path,
+               emit=None) -> dict:
+    """Guard → леджер → відправка по одній у send_order → збір позицій."""
+    emit = emit or _log.emit
+    data_dir = Path(data_dir)
+    batch_id = prepared["batch_id"]
+    bmax = prepared["bmax"]
+    window = prepared["window"]
+    off_target = False  # fire викликається лише після перевірки вікна викликачем
+    spent = _ledger.spent_total(ledger_path) if Path(ledger_path).is_file() else 0
+    ok, reason = _guard.decide(cfg.spend_cap_lamports, spent, bmax)
+    if not ok:
+        _ledger.append(ledger_path, {
+            "batch_id": batch_id, "decided_at": "2026-10-23T00:00:00Z",
+            "config_version": cfg.config_version, "batch_max_lamports": bmax,
+            "spent_before": spent, "spent_after": spent,
+            "decision": "rejected", "reason": reason})
+        return {"batch_id": batch_id, "mode": "live", "off_target": off_target,
                 "excluded_from_analysis": off_target, "sent": 0,
-                "signed": len(signed), "verified": len(signed), "decision": reason}
-
-    # Live: recs уже зібрано потоково; dry-run сюди не доходить.
+                "signed": len(prepared["signed"]), "verified": len(prepared["signed"]),
+                "decision": reason}
+    recs = []
+    for pos, tx in enumerate(prepared["signed"]):
+        recs.extend(sender([tx], batch_id=batch_id, idx_offset=pos))
     _ledger.append(ledger_path, {
         "batch_id": batch_id, "decided_at": "2026-10-23T00:00:00Z",
         "config_version": cfg.config_version, "batch_max_lamports": bmax,
         "spent_before": spent, "spent_after": spent + bmax,
         "decision": "accepted", "reason": reason})
     for r in recs:
-        emit({"batch_id": batch_id, "mode": mode, "config_version": cfg.config_version,
+        emit({"batch_id": batch_id, "mode": "live", "config_version": cfg.config_version,
               "msg": "live-sent", "path": r.get("path", "?")})
     landed = _collector.collect(data_dir, fetch)
-    return {"batch_id": batch_id, "mode": mode, "off_target": off_target,
+    return {"batch_id": batch_id, "mode": "live", "off_target": off_target,
             "excluded_from_analysis": off_target, "sent": len(recs),
-            "signed": len(signed), "verified": len(signed),
+            "signed": len(prepared["signed"]), "verified": len(prepared["signed"]),
             "decision": reason, "landed": len(landed)}
 
 

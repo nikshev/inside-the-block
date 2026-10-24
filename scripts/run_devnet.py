@@ -182,28 +182,55 @@ def main(argv=None) -> int:
               "start_slot": 0, "end_slot": 0}
     strategy = "burst" if a.burst else "stream"
 
-    def wait_for_window():
-        """Знайти наступне вікно валідатора і дочекатися slot start-2."""
+    def live_targeted(arm_batch_seq):
+        """Підписати заздалегідь → вікно в межах життя blockhash → залп.
+
+        Повертає rep fire_batch. Кидає SystemExit, якщо вікна немає.
+        """
         import time
-        epoch = rpc_call(a.rpc, "getEpochInfo", [{"commitment": "confirmed"}])["epoch"]
-        sched = rpc_call(a.rpc, "getLeaderSchedule", [epoch])
-        wins = S.windows(sched, ident, epoch)
-        cur = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
-        future = [w for w in wins if w["start_slot"] > cur + 2]
-        if not future:
-            raise SystemExit(f"немає майбутніх вікон для {ident} в епосі {epoch}")
-        w = future[0]
-        window.update(w)
-        print(f"вікно: {w['start_slot']}..{w['end_slot']} (зараз {cur}), чекаю...")
-        while True:
-            cur = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
-            if cur >= w["start_slot"] - 2:
-                return
-            time.sleep(0.2)
+        from itb import measure as M
+        last_err = "no-attempt"
+        for att in range(max(1, a.attempts)):
+            info = rpc_call(a.rpc, "getLatestBlockhash",
+                            [{"commitment": "confirmed"}])["value"]
+            bh = base58.decode(info["blockhash"])
+            lvbh = info["lastValidBlockHeight"]
+            prep = M.prepare_batch(cfg, a.arm, a.seed + arm_batch_seq, levels,
+                                    window, bh, keypairs, a.data_dir,
+                                    batch_seq=arm_batch_seq * 100 + att)
+            epoch_info = rpc_call(a.rpc, "getEpochInfo", [{"commitment": "confirmed"}])
+            cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
+            if cur_abs >= lvbh - 10:
+                last_err = "blockhash-expired-during-sign"
+                continue
+            first_slot = cur_abs - epoch_info["slotIndex"]
+            sched = rpc_call(a.rpc, "getLeaderSchedule", [])
+            if sched is None:
+                raise SystemExit("getLeaderSchedule повернув null; спробуй інший RPC")
+            wins = S.windows(sched, ident, epoch_info["epoch"])
+            cur_rel = cur_abs - first_slot
+            future = [w for w in wins
+                      if w["start_slot"] > cur_rel + 2 and w["start_slot"] < lvbh - 8]
+            if not future:
+                last_err = "no-window-in-bh-lifetime"
+                continue
+            w = future[0]
+            window.update(w)
+            for row_prep in prep["signed"]:
+                row_prep["target_slot"] = w["start_slot"]
+            target_abs = first_slot + w["start_slot"] - 2
+            print(f"спроба {att}: вікно rel {w['start_slot']}..{w['end_slot']} "
+                  f"(abs {first_slot + w['start_slot']}), чекаю abs {target_abs}...")
+            while rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}]) < target_abs:
+                time.sleep(0.2)
+            return M.fire_batch(cfg, prep, sender, fetch, a.data_dir, a.ledger)
+        raise SystemExit(f"live_targeted: усі спроби вичерпано ({last_err})")
 
     for b in range(a.batches):
         if mode == "live" and a.validator_identity and not a.no_wait:
-            wait_for_window()
+            rep = live_targeted(b)
+            print(f"batch {b} (targeted): {rep}")
+            continue
         for att in range(a.attempts if mode == "live" else 1):
             if mode == "live" and (a.burst or att > 0) and not a.blockhash:
                 bh = fresh_bh()
