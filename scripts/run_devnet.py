@@ -246,9 +246,11 @@ def main(argv=None) -> int:
             print(f"підписано за {time.time() - t0:.1f} с")
             # target_slot в sent.csv проставить recollect за фактом;
             # тут лишаємо -1 (жодних відносних слотів у даних).
+            # Фінальний підхід — за processed-слотом: confirmed відстає на
+            # кілька слотів, і залп систематично спізнювався повз вікно.
             while True:
-                cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
-                if cur_abs >= target_abs - 2:
+                cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "processed"}])
+                if cur_abs >= target_abs - 1:
                     break
                 if cur_abs > target_abs + w["end_slot"] - w["start_slot"] + 2:
                     last_err = "window-missed-after-sign"
