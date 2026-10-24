@@ -219,12 +219,14 @@ def main(argv=None) -> int:
                 continue
             w = future[0]
             window.update(w)
-            target_abs = first_slot + w["start_slot"] - 2
+            # Хореографія: чекати (start - 40), підписати (~10-15 слотів),
+            # дочекатися start-2, вдарити. Підпис ПІСЛЯ очікування = повз вікно.
+            target_abs = first_slot + w["start_slot"]
             print(f"спроба {att}: вікно rel {w['start_slot']}..{w['end_slot']} "
-                  f"(abs {first_slot + w['start_slot']}), чекаю abs {target_abs}...")
+                  f"(abs {target_abs}), готую підпис за ~40 слотів до...")
             while True:
                 cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
-                if cur_abs >= target_abs - 25:  # запас на паралельний підпис
+                if cur_abs >= target_abs - 40:
                     break
                 time.sleep(0.5)
             info = rpc_call(a.rpc, "getLatestBlockhash",
@@ -238,6 +240,17 @@ def main(argv=None) -> int:
             print(f"підписано за {time.time() - t0:.1f} с")
             for row_prep in prep["signed"]:
                 row_prep["target_slot"] = w["start_slot"]
+            while True:
+                cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
+                if cur_abs >= target_abs - 2:
+                    break
+                if cur_abs > target_abs + w["end_slot"] - w["start_slot"] + 2:
+                    last_err = "window-missed-after-sign"
+                    prep = None
+                    break
+                time.sleep(0.2)
+            if prep is None:
+                continue
             return M.fire_batch(cfg, prep, sender, fetch, a.data_dir, a.ledger)
         raise SystemExit(f"live_targeted: усі спроби вичерпано ({last_err})")
 
