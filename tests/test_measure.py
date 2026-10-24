@@ -112,6 +112,18 @@ def test_burst_sends_same_order(tmp_path):
     assert [i for c in calls for i in c] == spec["send_order"]
 
 
+def test_parallel_sign_matches_serial(tmp_path):
+    """Паралельний підпис дає ті самі байти, що й послідовний."""
+    from itb import txbuilder as T
+
+    payloads = [b"probe-payload-%d" % i for i in range(2)]
+    seed = bytes([9]) * 32
+    from itb import ed25519
+    sk = seed + ed25519.publickey(seed)
+    from itb.measure import _sign_all
+    assert _sign_all(payloads, [sk, sk], jobs=1) == _sign_all(payloads, [sk, sk], jobs=2)
+
+
 def test_off_target_excluded_from_analysis(tmp_path):
     report = run_batch(
         make_cfg(), arm="B", seed=5, levels=[100],

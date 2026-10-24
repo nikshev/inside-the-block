@@ -84,24 +84,21 @@ def run_batch(
                       emit=emit)
 
 
-def _build_one(cfg, spec, window, blockhash, keypairs, batch_id, batch_seq, seed, idx):
-    t = spec["txs"][idx]
-    payload = _txb.build_memo_transfer(
-        _base58.encode(_pubkey_bytes(keypairs, t["payer"])),
-        blockhash, t["cu_limit"], t["cu_price_lamports"],
-        f"{batch_id}:{t['idx']}")
-    sk = keypairs[t["payer"]]
+def _sign_verify_one(args) -> bytes:
+    """Підписати і верифікувати один payload. Top-level — для multiprocessing."""
+    payload, sk = args
     sig = _txb.sign_payload(payload, sk)
     assert _txb.verify_signature(payload, sig, sk[32:]), "підпис не верифікується"
-    return {"wire": _txb.build_tx_wire(payload, sig),
-            "signature_b58": _base58.encode(sig),
-            "target_slot": window["start_slot"],
-            "sent_at_us": time.time_ns() // 1000,
-            "batch_id": batch_id, "idx": t["idx"],
-            "cu_price_lamports": t["cu_price_lamports"],
-            "cu_limit": t["cu_limit"], "payer": t["payer"],
-            "seed": seed, "path": "stub-local",
-            "config_version": cfg.config_version}
+    return sig
+
+
+def _sign_all(payloads: list, sks: list, jobs: int = 1) -> list:
+    """Підписати пакети; jobs>1 — паралельно (порядок зберігається)."""
+    if jobs <= 1:
+        return [_sign_verify_one((p, s)) for p, s in zip(payloads, sks)]
+    import multiprocessing as mp
+    with mp.Pool(processes=jobs) as pool:
+        return pool.map(_sign_verify_one, list(zip(payloads, sks)))
 
 
 def _sent_row(window, cfg, batch_id, s):
@@ -115,11 +112,12 @@ def _sent_row(window, cfg, batch_id, s):
 
 
 def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
-                  data_dir, batch_seq=0, emit=None) -> dict:
+                  data_dir, batch_seq=0, emit=None, jobs: int = 1) -> dict:
     """Побудувати+підписати+верифікувати батч і записати sent.csv.
 
     Жодної відправки, жодного леджера, жодної мережі — придатне для dry-run
-    і для завчасного підпису перед вікном лідера.
+    і для завчасного підпису перед вікном лідера. jobs>1 — паралельний
+    підпис через multiprocessing (той самий байтовий результат).
     """
     emit = emit or _log.emit
     data_dir = Path(data_dir)
@@ -130,9 +128,28 @@ def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
     n = len(spec["txs"])
     max_price = max(t["cu_price_lamports"] for t in spec["txs"])
     bmax = _guard.batch_max_lamports(n, cfg.base_fee_lamports, max_price)
-    signed = [_build_one(cfg, spec, window, blockhash, keypairs,
-                         batch_id, batch_seq, seed, idx)
-              for idx in spec["send_order"]]
+    payloads, sks = [], []
+    for idx in spec["send_order"]:
+        t = spec["txs"][idx]
+        payloads.append(_txb.build_memo_transfer(
+            _base58.encode(_pubkey_bytes(keypairs, t["payer"])),
+            blockhash, t["cu_limit"], t["cu_price_lamports"],
+            f"{batch_id}:{t['idx']}"))
+        sks.append(keypairs[t["payer"]])
+    sigs = _sign_all(payloads, sks, jobs=jobs)
+    signed = []
+    order = spec["send_order"]
+    for pos, (idx, sig) in enumerate(zip(order, sigs)):
+        t = spec["txs"][idx]
+        signed.append({"wire": _txb.build_tx_wire(payloads[pos], sig),
+                       "signature_b58": _base58.encode(sig),
+                       "target_slot": window["start_slot"],
+                       "sent_at_us": time.time_ns() // 1000,
+                       "batch_id": batch_id, "idx": t["idx"],
+                       "cu_price_lamports": t["cu_price_lamports"],
+                       "cu_limit": t["cu_limit"], "payer": t["payer"],
+                       "seed": seed, "path": "stub-local",
+                       "config_version": cfg.config_version})
     _storage.write_sent(
         data_dir, [_sent_row(window, cfg, batch_id, s) for s in signed])
     return {"batch_id": batch_id, "signed": signed, "bmax": bmax, "spec": spec,

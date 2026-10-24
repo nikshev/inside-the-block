@@ -135,6 +135,8 @@ def main(argv=None) -> int:
                     help="залп: підписати все, відправити всі поспіль (для концентрації в слоті)")
     ap.add_argument("--attempts", type=int, default=1,
                     help="спроб залпу зі свіжим blockhash (кожна спроба рахується guard)")
+    ap.add_argument("--jobs", type=int, default=8,
+                    help="паралельних підписів (multiprocessing, stdlib)")
     ap.add_argument("--validator-identity", default=None,
                     help="identity цільового валідатора; без нього — опортуністична відправка")
     ap.add_argument("--no-wait", action="store_true",
@@ -197,7 +199,7 @@ def main(argv=None) -> int:
             lvbh = info["lastValidBlockHeight"]
             prep = M.prepare_batch(cfg, a.arm, a.seed + arm_batch_seq, levels,
                                     window, bh, keypairs, a.data_dir,
-                                    batch_seq=arm_batch_seq * 100 + att)
+                                    batch_seq=arm_batch_seq * 100 + att, jobs=a.jobs)
             epoch_info = rpc_call(a.rpc, "getEpochInfo", [{"commitment": "confirmed"}])
             cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
             if cur_abs >= lvbh - 10:
