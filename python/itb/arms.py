@@ -9,7 +9,9 @@ from __future__ import annotations
 import random
 
 ARMS = ("A", "B", "C", "D")
-CONFLICT_ACCOUNT = "ConflictShared11111111111111111111111111111111"
+# Детермінований спільний writable-акаунт рукава D:
+# sha256('inside-the-block shared conflict account v1') у base58.
+CONFLICT_ACCOUNT = "59qzdJyTmTHLoo4kt1RjEBcuh6EnwbRvNJZAgNE3ATn1"
 
 
 def _payers(n: int, shared: bool) -> list:

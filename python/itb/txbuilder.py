@@ -34,33 +34,46 @@ def compact_u16(n: int) -> bytes:
             return bytes(out)
 
 
-def _ix(program_index: int, data: bytes) -> bytes:
-    return bytes([program_index]) + compact_u16(0) + compact_u16(len(data)) + data
+def _ix(program_index: int, data: bytes, accounts: list | None = None) -> bytes:
+    accs = bytes(accounts or [])
+    return (bytes([program_index]) + compact_u16(len(accs)) + accs
+            + compact_u16(len(data)) + data)
 
 
 def build_memo_transfer(
-    payer_b58: str, blockhash32: bytes, cu_limit: int, cu_price: int, memo: str
+    payer_b58: str, blockhash32: bytes, cu_limit: int, cu_price: int, memo: str,
+    extra_writable: list | None = None,
 ) -> bytes:
-    """Серіалізоване повідомлення: payer + cb(limit) + cb(price) + memo."""
+    """Серіалізоване повідомлення: payer + [writable...] + cb(limit) + cb(price) + memo.
+
+    extra_writable: список base58-pubkey додаткових WRITABLE акаунтів
+    (для рукава D — спільний акаунт створює write-конфлікт у планувальника).
+    Порожній за замовчуванням: байти ідентичні історичному формату
+    (золотий вектор у tests/test_txbuilder.py).
+    """
     if len(blockhash32) != 32:
         raise ValueError("blockhash має бути 32 байти")
     payer = base58.decode(payer_b58)
     cb_prog = base58.decode(COMPUTE_BUDGET_PROGRAM_B58)
     memo_prog = base58.decode(MEMO_PROGRAM_B58)
+    extras = [base58.decode(a) for a in (extra_writable or [])]
     memo_bytes = memo.encode("utf-8")
 
+    n_extra = len(extras)
+    ix_cb, ix_memo = 1 + n_extra, 2 + n_extra
     header = bytes([1, 0, 2])  # 1 required sig, 0 readonly-signed, 2 readonly-unsigned
     body = (
         header
-        + compact_u16(3)
+        + compact_u16(3 + n_extra)
         + payer
+        + b"".join(extras)
         + cb_prog
         + memo_prog
         + blockhash32
         + compact_u16(3)
-        + _ix(1, struct.pack("<BI", SET_COMPUTE_UNIT_LIMIT_DISC, cu_limit))
-        + _ix(1, struct.pack("<BQ", SET_COMPUTE_UNIT_PRICE_DISC, cu_price))
-        + _ix(2, memo_bytes)
+        + _ix(ix_cb, struct.pack("<BI", SET_COMPUTE_UNIT_LIMIT_DISC, cu_limit))
+        + _ix(ix_cb, struct.pack("<BQ", SET_COMPUTE_UNIT_PRICE_DISC, cu_price))
+        + _ix(ix_memo, memo_bytes, accounts=list(range(1, 1 + n_extra)))
     )
     return body
 

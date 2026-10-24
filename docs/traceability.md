@@ -2,7 +2,7 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **33** · задач: **31** (виконано 31) · вимог у роботі: **0** · порушень: **0**
+Вимог: **33** · задач: **32** (виконано 32) · вимог у роботі: **0** · порушень: **0**
 
 ## 001-pipeline-safety
 
@@ -25,10 +25,10 @@
 
 | Вимога | Опис | Задачі | Імплементація | Тести |
 |---|---|---|---|---|
-| `FR-002-01` | Система MUST будувати tx з інструкцій ComputeBudget | `T-014` | `python/itb/txbuilder.py` | `tests/test_txbuilder.py` |
+| `FR-002-01` | Система MUST будувати tx з інструкцій ComputeBudget | `T-014`, `T-032` | `python/itb/txbuilder.py` | `tests/test_txbuilder_d.py`, `tests/test_txbuilder.py` |
 | `FR-002-02` | Система MUST підписувати tx справжнім ed25519; вендорена | `T-013` | `python/itb/ed25519.py` | `tests/test_ed25519.py` |
 | `FR-002-03` | Система MUST кодувати base58 для адрес/сигнатур; реалізація | `T-012` | `python/itb/base58.py` | `tests/test_base58.py` |
-| `FR-002-04` | Система MUST реалізовувати рукави A–D за таблицею PRD | `T-015` | `python/itb/arms.py` | `tests/test_arms.py` |
+| `FR-002-04` | Система MUST реалізовувати рукави A–D за таблицею PRD | `T-015`, `T-032` | `python/itb/arms.py` | `tests/test_arms.py` |
 | `FR-002-05` | Порядок відправки в батчі MUST рандомізуватися з seed, що | `T-015` | `python/itb/arms.py` | `tests/test_arms.py` |
 | `FR-002-06` | Система MUST читати leader-розклад (`getLeaderSchedule`) і | `T-016` | `python/itb/schedule.py` | `tests/test_schedule.py` |
 | `FR-002-07` | Відправка MUST підтримувати шлях `direct-tpu` (інтерфейс + | `T-017` | `python/itb/sender.py` | `tests/test_sender.py` |
@@ -68,5 +68,6 @@
 - `T-013` (002-measurement) — виконано
 - `T-014` (002-measurement) — виконано
 - `T-019` (002-measurement) — виконано
+- `T-032` (002-measurement) — виконано
 - `T-020` (003-analysis) — виконано
 - `T-024` (003-analysis) — виконано

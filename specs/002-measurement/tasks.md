@@ -37,6 +37,8 @@
 | FR-002-09 | T-018 |
 | FR-002-10 | T-019 |
 
+- [x] T-032 [FR-002-01, FR-002-04] critical: Writable-акаунт у message + SDK-золото для D. Тест `tests/test_txbuilder_d.py` (побайтова рівність, підпис, спадковість legacy-розкладки). Імпл `python/itb/txbuilder.py` + `python/itb/arms.py` (реальний CONFLICT_ACCOUNT).
+
 ## Ескалації
 
 Жодної поки.
