@@ -112,12 +112,14 @@ def _sent_row(window, cfg, batch_id, s):
 
 
 def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
-                  data_dir, batch_seq=0, emit=None, jobs: int = 1) -> dict:
-    """Побудувати+підписати+верифікувати батч і записати sent.csv.
+                  data_dir, batch_seq=0, emit=None, jobs: int = 1,
+                  write_sent: bool = True) -> dict:
+    """Побудувати+підписати+верифікувати батч.
 
-    Жодної відправки, жодного леджера, жодної мережі — придатне для dry-run
-    і для завчасного підпису перед вікном лідера. jobs>1 — паралельний
-    підпис через multiprocessing (той самий байтовий результат).
+    write_sent=True (default): одразу записати sent.csv — для dry-run і
+    спадкового run_batch. Таргетований флоу передає False: запис робить
+    fire_batch, щоб у даних не було рядків, які ніколи не відправлялись.
+    Жодної відправки, жодного леджера, жодної мережі.
     """
     emit = emit or _log.emit
     data_dir = Path(data_dir)
@@ -151,19 +153,24 @@ def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
                        "seed": seed, "path": "stub-local",
                        "config_version": cfg.config_version})
     _storage.write_sent(
-        data_dir, [_sent_row(window, cfg, batch_id, s) for s in signed])
+        data_dir, [_sent_row(window, cfg, batch_id, s) for s in signed]) \
+        if write_sent else None
     return {"batch_id": batch_id, "signed": signed, "bmax": bmax, "spec": spec,
-            "window": window, "seed": seed, "arm": arm}
+            "window": window, "seed": seed, "arm": arm,
+            "sent_written": write_sent}
 
 
 def fire_batch(cfg, prepared: dict, sender, fetch, data_dir, ledger_path,
                emit=None) -> dict:
-    """Guard → леджер → відправка по одній у send_order → збір позицій."""
+    """Guard → леджер → запис sent.csv → відправка по одній у send_order → збір."""
     emit = emit or _log.emit
     data_dir = Path(data_dir)
     batch_id = prepared["batch_id"]
     bmax = prepared["bmax"]
     window = prepared["window"]
+    if not prepared.get("sent_written"):
+        _storage.write_sent(
+            data_dir, [_sent_row(window, cfg, batch_id, s) for s in prepared["signed"]])
     off_target = False  # fire викликається лише після перевірки вікна викликачем
     spent = _ledger.spent_total(ledger_path) if Path(ledger_path).is_file() else 0
     ok, reason = _guard.decide(cfg.spend_cap_lamports, spent, bmax)
@@ -192,7 +199,8 @@ def fire_batch(cfg, prepared: dict, sender, fetch, data_dir, ledger_path,
     return {"batch_id": batch_id, "mode": "live", "off_target": off_target,
             "excluded_from_analysis": off_target, "sent": len(recs),
             "signed": len(prepared["signed"]), "verified": len(prepared["signed"]),
-            "decision": reason, "landed": len(landed)}
+            "decision": reason, "landed": len(landed),
+            "signatures": [s["signature_b58"] for s in prepared["signed"]]}
 
 
 def _pubkey_bytes(keypairs: dict, payer: str) -> bytes:

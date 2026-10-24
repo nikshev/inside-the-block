@@ -87,12 +87,18 @@ def confirm_slots(rpc_url, signatures, timeout_s=180):
     return found, pending
 
 
-def recollect_with_actual_slots(data_dir, rpc_url):
-    """Переписати target_slot за фактичними слотами і перезбирати landed."""
+def recollect_with_actual_slots(data_dir, rpc_url, only_sigs=None):
+    """Переписати target_slot за фактичними слотами і перезбирати landed.
+
+    only_sigs: збирати лише ці сигнатури (ігнорувати інші рядки sent.csv).
+    """
     import csv
     from itb import collector as C
     data_dir = Path(data_dir)
     rows = list(csv.DictReader((data_dir / "sent.csv").open(encoding="utf-8")))
+    if only_sigs is not None:
+        keep = set(only_sigs)
+        rows = [r for r in rows if r["signature"] in keep]
     sigs = [r["signature"] for r in rows]
     found, missing = confirm_slots(rpc_url, sigs)
     print(f"confirmed: {len(found)}, unconfirmed: {len(missing)}")
@@ -196,13 +202,16 @@ def main(argv=None) -> int:
             info = rpc_call(a.rpc, "getLatestBlockhash",
                             [{"commitment": "confirmed"}])["value"]
             bh = base58.decode(info["blockhash"])
-            lvbh = info["lastValidBlockHeight"]
+            # Увага: lastValidBlockHeight — це ВИСОТА, не слот. Дедлайн рахуємо
+            # від слота отримання: ~150 слотів життя, запас 20.
+            bh_slot = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
             prep = M.prepare_batch(cfg, a.arm, a.seed + arm_batch_seq, levels,
                                     window, bh, keypairs, a.data_dir,
-                                    batch_seq=arm_batch_seq * 100 + att, jobs=a.jobs)
+                                    batch_seq=arm_batch_seq * 100 + att, jobs=a.jobs,
+                                    write_sent=False)
             epoch_info = rpc_call(a.rpc, "getEpochInfo", [{"commitment": "confirmed"}])
             cur_abs = rpc_call(a.rpc, "getSlot", [{"commitment": "confirmed"}])
-            if cur_abs >= lvbh - 10:
+            if cur_abs >= bh_slot + 130:
                 last_err = "blockhash-expired-during-sign"
                 continue
             first_slot = cur_abs - epoch_info["slotIndex"]
@@ -211,8 +220,9 @@ def main(argv=None) -> int:
                 raise SystemExit("getLeaderSchedule повернув null; спробуй інший RPC")
             wins = S.windows(sched, ident, epoch_info["epoch"])
             cur_rel = cur_abs - first_slot
+            latest_start = (bh_slot + 130) - first_slot
             future = [w for w in wins
-                      if w["start_slot"] > cur_rel + 2 and w["start_slot"] < lvbh - 8]
+                      if cur_rel + 2 < w["start_slot"] < latest_start - 5]
             if not future:
                 last_err = "no-window-in-bh-lifetime"
                 continue
@@ -228,10 +238,13 @@ def main(argv=None) -> int:
             return M.fire_batch(cfg, prep, sender, fetch, a.data_dir, a.ledger)
         raise SystemExit(f"live_targeted: усі спроби вичерпано ({last_err})")
 
+    fired_sigs: list = []
     for b in range(a.batches):
         if mode == "live" and a.validator_identity and not a.no_wait:
             rep = live_targeted(b)
-            print(f"batch {b} (targeted): {rep}")
+            print(f"batch {b} (targeted): " +
+                  str({k: rep[k] for k in rep if k != "signatures"}))
+            fired_sigs.extend(rep.get("signatures", []))
             continue
         for att in range(a.attempts if mode == "live" else 1):
             if mode == "live" and (a.burst or att > 0) and not a.blockhash:
@@ -240,9 +253,12 @@ def main(argv=None) -> int:
                                     keypairs, sender, fetch, mode,
                                     a.data_dir, a.ledger, actual_leader=ident,
                                     batch_seq=b * 100 + att, send_strategy=strategy)
-            print(f"batch {b} attempt {att}: {rep}")
+            print(f"batch {b} attempt {att}: " +
+                  str({k: rep[k] for k in rep if k != "signatures"}))
+            fired_sigs.extend(rep.get("signatures", []))
     if mode == "live":
-        found, missing = recollect_with_actual_slots(a.data_dir, a.rpc)
+        found, missing = recollect_with_actual_slots(
+            a.data_dir, a.rpc, only_sigs=fired_sigs or None)
         leaders = {}
         for sig, slot in found.items():
             try:
