@@ -44,6 +44,23 @@ def make_data(root: Path):
         w.writerows(landed)
 
 
+def test_reward_per_cu_includes_base_fee(tmp_path):
+    """H3-ключ: (5000 + price*limit/1e6) / limit, не price/limit."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "analyze_mod", Path(__file__).resolve().parent.parent / "scripts" / "analyze.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    make_data(tmp_path / "data")
+    rows = mod.load_joined(tmp_path / "data")
+    by_price = {r["cu_price"]: r["reward_per_cu"] for r in rows}
+    # фікстура: price 1000..5000, limit 200000.
+    # price 1000 -> (5000 + 1000*200000/1e6)/200000 = 5200/200000 = 0.026
+    assert abs(by_price[1000] - 0.026) < 1e-9
+    # більший price -> більший ratio при однаковому ліміті
+    assert by_price[5000] > by_price[1000]
+
+
 def test_analyze_strict_on_perfect_arm(tmp_path):
     make_data(tmp_path / "data")
     p = subprocess.run([sys.executable, "scripts/analyze.py", str(tmp_path / "data"),

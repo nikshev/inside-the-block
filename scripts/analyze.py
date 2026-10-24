@@ -66,7 +66,10 @@ def load_joined(data_dir: Path, by_leader: bool = False) -> list:
                 "signature": row["signature"],
                 "position": int(row["position"]),
                 "cu_price": price,
-                "reward_per_cu": price / limit,
+                # H3: повна винагорода на одиницю cost =
+                # (базові 5000 lamports + priority fee) / CU limit.
+                # При фіксованому price більший limit дає МЕНШИЙ ratio.
+                "reward_per_cu": (5000 + price * limit / 1_000_000) / limit,
                 # send_pos = реальне місце в порядку відправки; fallback idx
                 # лише для дуже старих CSV без колонки (H1 за ними недійсний).
                 "send_idx": _int(s.get("send_pos", s.get("send_idx", s.get("idx", 0)))),
