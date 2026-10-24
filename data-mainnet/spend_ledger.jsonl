@@ -25,3 +25,5 @@
 {"batch_id": "v432-DRpb-C-100-212", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 100000, "spent_before": 43350000, "spent_after": 43450000, "decision": "accepted", "reason": "ok"}
 {"batch_id": "v432-DRpb-D-0-221", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 2050000, "spent_before": 43450000, "spent_after": 45500000, "decision": "accepted", "reason": "ok"}
 {"batch_id": "v432-DRpb-D-100-222", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 2050000, "spent_before": 45500000, "spent_after": 47550000, "decision": "accepted", "reason": "ok"}
+{"batch_id": "v2610-Evn-B-0-231", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 100000, "spent_before": 47550000, "spent_after": 47650000, "decision": "accepted", "reason": "ok"}
+{"batch_id": "v2610-Evn-B-100-232", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 100000, "spent_before": 47650000, "spent_after": 47750000, "decision": "accepted", "reason": "ok"}
