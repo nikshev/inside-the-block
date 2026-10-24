@@ -23,6 +23,17 @@ class TestAgreement:
         pairs = A.pairs_in_slot(rows(1, [50, 40, 30, 20, 10]), lambda r: r["cu_price"])
         assert A.agreement(pairs) == 1.0
 
+    def test_send_order_fifo_direction(self):
+        # H1 (FIFO): раніше відправлений (менший send_idx) — раніше в блоці.
+        # Той самий порядок дає 1.0 лише з напрямком FIFO, не fee-напрямком.
+        rs = rows(1, [10, 10, 10, 10, 10])
+        for i, r in enumerate(rs):
+            r["send_idx"] = i
+        fifo = A.pairs_in_slot(rs, lambda r: -r["send_idx"])
+        assert A.agreement(fifo) == 1.0
+        fee_dir = A.pairs_in_slot(rs, lambda r: r["send_idx"])
+        assert A.agreement(fee_dir) == 0.0
+
     def test_random_order_near_half(self):
         rng = random.Random(7)
         fees = list(range(200))
