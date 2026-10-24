@@ -70,7 +70,7 @@ def verify(data_dir: Path) -> list:
 def fetch_block_sigs(rpc_url: str, slot: int) -> list | None:
     """Сигнатури слота з ланцюга через getBlock (jsonParsed або base58-список)."""
     req = {"jsonrpc": "2.0", "id": f"verify-{slot}", "method": "getBlock",
-           "params": [slot, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}]}
+           "params": [slot, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1}]}
     http_req = urllib.request.Request(
         rpc_url, data=json.dumps(req).encode(),
         headers={"Content-Type": "application/json"})

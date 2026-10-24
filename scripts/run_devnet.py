@@ -24,21 +24,33 @@ from itb import base58, config as C, ed25519, measure
 from itb.sender import DirectTpuStub, RpcSender
 
 
-def rpc_call(rpc_url, method, params):
-    req = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
-    r = urllib.request.Request(rpc_url, data=json.dumps(req).encode(),
-                               headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(r, timeout=60) as resp:
-        out = json.loads(resp.read().decode())
-    if out.get("error"):
-        raise RuntimeError(f"RPC {method}: {out['error']}")
-    return out["result"]
+def rpc_call(rpc_url, method, params, tries=8):
+    import time
+    import urllib.error
+    last = None
+    for i in range(tries):
+        req = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+        r = urllib.request.Request(rpc_url, data=json.dumps(req).encode(),
+                                   headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(r, timeout=60) as resp:
+                out = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            last = f"HTTP {e.code}"
+            time.sleep(min(60, 5 * (i + 1)))
+            continue
+        if out.get("error"):
+            last = str(out["error"])
+            time.sleep(min(60, 5 * (i + 1)))
+            continue
+        return out["result"]
+    raise RuntimeError(f"RPC {method} failed after {tries}: {last}")
 
 
 def fetch_block(rpc_url, slot):
     res = rpc_call(rpc_url, "getBlock",
                    [slot, {"encoding": "jsonParsed",
-                           "maxSupportedTransactionVersion": 0,
+                           "maxSupportedTransactionVersion": 1,
                            "transactionDetails": "full"}])
     if res is None:
         return None
@@ -52,6 +64,50 @@ def fetch_block(rpc_url, slot):
             if arr:
                 txs.append({"signature": arr[0]})
     return {"transactions": txs}
+
+
+def confirm_slots(rpc_url, signatures, timeout_s=180):
+    """Чекати підтвердження; повернути {sig: slot}."""
+    import time
+    pending = list(signatures)
+    found = {}
+    deadline = time.time() + timeout_s
+    while pending and time.time() < deadline:
+        res = rpc_call(rpc_url, "getSignatureStatuses",
+                       [pending, {"searchTransactionHistory": True}])
+        still = []
+        for sig, v in zip(pending, res.get("value") or []):
+            if v and v.get("slot"):
+                found[sig] = v["slot"]
+            else:
+                still.append(sig)
+        pending = still
+        if pending:
+            time.sleep(4)
+    return found, pending
+
+
+def recollect_with_actual_slots(data_dir, rpc_url):
+    """Переписати target_slot за фактичними слотами і перезбирати landed."""
+    import csv
+    from itb import collector as C
+    data_dir = Path(data_dir)
+    rows = list(csv.DictReader((data_dir / "sent.csv").open(encoding="utf-8")))
+    sigs = [r["signature"] for r in rows]
+    found, missing = confirm_slots(rpc_url, sigs)
+    print(f"confirmed: {len(found)}, unconfirmed: {len(missing)}")
+    slot_of = {s: found.get(s) for s in sigs}
+    fixed = [dict(r, target_slot=slot_of[r["signature"]] if slot_of[r["signature"]] else -1)
+             for r in rows]
+    with (data_dir / "sent.csv").open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(fixed)
+    landed = data_dir / "landed.csv"
+    if landed.is_file():
+        landed.unlink()  # прибрати missing-заглушки первинного збору
+    C.collect(data_dir, lambda slot: fetch_block(rpc_url, slot) if slot >= 0 else None)
+    return found, missing
 
 
 def load_keypair(path: Path):
@@ -89,10 +145,13 @@ def main(argv=None) -> int:
     elif mode == "dry-run":
         raise SystemExit("--dry-run потребує --blockhash (без мережі)")
     else:
-        bh = base64.b64decode(rpc_call(a.rpc, "getLatestBlockhash",
-                                       [{"commitment": "confirmed"}])["value"]["blockhash"])
-    sender = RpcSender(a.rpc) if mode == "live" else DirectTpuStub()
-    fetch = (lambda slot: fetch_block(a.rpc, slot)) if mode == "live" else None
+        bh_b58 = rpc_call(a.rpc, "getLatestBlockhash",
+                          [{"commitment": "confirmed"}])["value"]["blockhash"]
+        bh = base58.decode(bh_b58)
+        print(f"blockhash: {bh_b58}")
+    sender = RpcSender(a.rpc).send if mode == "live" else DirectTpuStub().send
+    fetch = (lambda slot: fetch_block(a.rpc, slot) if slot > 0 else None) \
+        if mode == "live" else None
 
     levels = {"A": [0, 500, 1000], "B": [5000], "C": [5000, 100000, 200000],
               "D": [0, 500, 1000]}[a.arm]
@@ -104,6 +163,11 @@ def main(argv=None) -> int:
                                 a.data_dir, a.ledger, actual_leader="devnet-smoke",
                                 batch_seq=b)
         print(f"batch {b}: {rep}")
+    if mode == "live":
+        found, missing = recollect_with_actual_slots(a.data_dir, a.rpc)
+        if missing:
+            print(f"не підтверджено: {missing}")
+            return 1
     return 0
 
 

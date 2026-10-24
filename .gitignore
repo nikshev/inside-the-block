@@ -1,6 +1,9 @@
 # Інсталятор каркаса — не в git (відтворюється з /opt/bounty-radar/sdd-init)
 /sdd-init/
 
+# Локальні scratch-прогони (не сабміт-дані)
+/data-devnet/
+
 # Артефакти, відтворювані з коду — не в git
 /graphify-out/
 /.graphify/

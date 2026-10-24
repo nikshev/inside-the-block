@@ -8,7 +8,7 @@
 | Захід | Дата (UTC) | Епоха | Конфіг | Примітка |
 |---|---|---|---|---|
 | dry-run | 2026-10-23 | — | `2026.10.23.2` | `run_pipeline.py`: 6 батчів × 10 tx, guard пораховано, леджер порожній |
-| devnet e2e | 2026-10-23 | слот 514274625+ | `2026.10.23.2` | ЧАСТКОВО: build+sign реальних tx і `run_devnet.py --dry-run` зелені; live-відправка BLOCKED — публічний кран 429 по IP (ключ `keys/devnet-e2e.json`, фандинг через faucet.solana.com або RPC-ключ; rerun: `run_devnet.py --live --keypair keys/devnet-e2e.json`) |
+| devnet e2e | 2026-10-23/24 | слоти 514544243–244 | `2026.10.23.2` | DONE: батч A × 10 tx, усі signed/verified/sent/confirmed; позиції 243:[7,13,15,18] 244:[2,3,4,5,6,7]; `verify` ok; витрачено 0.00015 SOL (залишок 4.99985). Знайдено і виправлено: `encoding=base64` у sendTransaction, raise on RPC error, backoff на 429, maxSupportedTransactionVersion=1 |
 | live #1 | ⏳ | ⏳ | ⏳ | після Alpenglow (21.10.2026), без змішування |
 | live #2 (повтор) | ⏳ | ⏳ | ⏳ | якщо landing rate низький |
 
