@@ -136,7 +136,8 @@ def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
         payloads.append(_txb.build_memo_transfer(
             _base58.encode(_pubkey_bytes(keypairs, t["payer"])),
             blockhash, t["cu_limit"], t["cu_price_lamports"],
-            f"{batch_id}:{t['idx']}"))
+            f"{batch_id}:{t['idx']}",
+            extra_writable=t.get("writable_accounts") or []))
         sks.append(keypairs[t["payer"]])
     sigs = _sign_all(payloads, sks, jobs=jobs)
     signed = []
