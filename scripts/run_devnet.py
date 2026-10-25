@@ -67,21 +67,20 @@ def fetch_block(rpc_url, slot):
 
 
 def confirm_slots(rpc_url, signatures, timeout_s=180):
-    """Чекати підтвердження; повернути {sig: slot}."""
+    """Чекати підтвердження; повернути {sig: slot}. Пачками по 100 (ліміт RPC 256)."""
     import time
-    pending = list(signatures)
-    found = {}
-    deadline = time.time() + timeout_s
+    found, pending, deadline = {}, list(signatures), time.time() + timeout_s
     while pending and time.time() < deadline:
+        batch, pending = pending[:100], pending[100:]
         res = rpc_call(rpc_url, "getSignatureStatuses",
-                       [pending, {"searchTransactionHistory": True}])
+                       [batch, {"searchTransactionHistory": True}])
         still = []
-        for sig, v in zip(pending, res.get("value") or []):
+        for sig, v in zip(batch, res.get("value") or []):
             if v and v.get("slot"):
                 found[sig] = v["slot"]
             else:
                 still.append(sig)
-        pending = still
+        pending = still + pending
         if pending:
             time.sleep(4)
     return found, pending
