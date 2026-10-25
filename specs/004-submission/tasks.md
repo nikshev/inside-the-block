@@ -6,7 +6,8 @@
 - [x] T-029 [FR-004-04] Скелет звіту. Тест у `tests/test_docs.py` (розділи: дати, версії, вердикти, графіки, what-went-wrong). Імпл `docs/report.md`.
 - [x] T-030 [FR-004-05] Чекліст сабміту. Тест у `tests/test_docs.py` (8 deliverables). Імпл `docs/submission.md`.
 
-- [x] T-031 [FR-001-12] Devnet-ранер однією командою. Тест `tests/test_run_devnet.py` (dry-run без мережі пише sent.csv; --help показує --rpc/--keypair). Імпл `scripts/run_devnet.py`.
+- [x] T-031 [FR-001-12] Devnet-ранер однією командою.
+- [x] T-032 [FR-004-04] Графік position-vs-fee (SVG, stdlib). Тест `tests/test_plot.py` (5 точок, осі підписані). Імпл `scripts/plot.py` → `docs/plots/position-vs-fee.svg`. Тест `tests/test_run_devnet.py` (dry-run без мережі пише sent.csv; --help показує --rpc/--keypair). Імпл `scripts/run_devnet.py`.
 
 ## Покриття FR
 

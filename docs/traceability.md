@@ -2,7 +2,7 @@
 
 <!-- ГЕНЕРУЄТЬСЯ scripts/trace.py — не редагувати вручну -->
 
-Вимог: **33** · задач: **32** (виконано 32) · вимог у роботі: **0** · порушень: **0**
+Вимог: **33** · задач: **33** (виконано 33) · вимог у роботі: **0** · порушень: **0**
 
 ## 001-pipeline-safety
 
@@ -54,7 +54,7 @@
 | `FR-004-01` | README MUST містити: запуск однією командою, dry-run/live | `T-028` | `scripts/check_docs.py` | `tests/test_docs.py` |
 | `FR-004-02` | `analyze` CLI MUST з `data/` рахувати метрики 003 на | `T-026` | `scripts/analyze.py` | `tests/test_analyze.py` |
 | `FR-004-03` | `verify --live-check` MUST перезапитувати `getBlock` з RPC | `T-027` | `scripts/verify.py` | `tests/test_verify_live.py` |
-| `FR-004-04` | Звіт-скелет MUST мати: дати вимірювань, версії конфігу і | `T-029` | `scripts/check_docs.py` | `tests/test_docs.py` |
+| `FR-004-04` | Звіт-скелет MUST мати: дати вимірювань, версії конфігу і | `T-029`, `T-032` | `scripts/plot.py`, `scripts/check_docs.py` | `tests/test_plot.py`, `tests/test_docs.py` |
 | `FR-004-05` | Чекліст сабміту MUST покривати всі 8 deliverables PRD зі | `T-030` | `scripts/check_docs.py` | `tests/test_docs.py` |
 
 ## Критичні задачі
