@@ -125,3 +125,6 @@
 {"batch_id": "v432-CAo1-A-0-421", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 128800, "spent_before": 14371400, "spent_after": 14500200, "decision": "accepted", "reason": "ok"}
 {"batch_id": "v432-CAo1-A-100-422", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 128800, "spent_before": 14500200, "spent_after": 14629000, "decision": "accepted", "reason": "ok"}
 {"batch_id": "v432-CAo1-A-200-423", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 128800, "spent_before": 14629000, "spent_after": 14757800, "decision": "accepted", "reason": "ok"}
+{"batch_id": "v432-DRpb-A-0-431", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 128800, "spent_before": 14757800, "spent_after": 14886600, "decision": "accepted", "reason": "ok"}
+{"batch_id": "v432-DRpb-A-100-432", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 128800, "spent_before": 14886600, "spent_after": 15015400, "decision": "accepted", "reason": "ok"}
+{"batch_id": "v432-DRpb-A-200-433", "decided_at": "2026-10-23T00:00:00Z", "config_version": "2026.10.23.2", "batch_max_lamports": 128800, "spent_before": 15015400, "spent_after": 15144200, "decision": "accepted", "reason": "ok"}
