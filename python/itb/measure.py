@@ -44,8 +44,9 @@ def run_batch(
                                  {"tx_per_batch": cfg.batch.tx_per_batch,
                                   "cu_limit": cfg.batch.cu_limit})
     n = len(spec["txs"])
-    max_price = max(t["cu_price_lamports"] for t in spec["txs"])
-    bmax = _guard.batch_max_lamports(n, cfg.base_fee_lamports, max_price)
+    bmax = _guard.batch_max_for_txs(
+        cfg.base_fee_lamports,
+        [(t["cu_price_lamports"], t["cu_limit"]) for t in spec["txs"]])
 
     if mode == "live":
         spent = _ledger.spent_total(ledger_path) if Path(ledger_path).is_file() else 0
@@ -128,8 +129,9 @@ def prepare_batch(cfg, arm, seed, levels, window, blockhash, keypairs,
                                  {"tx_per_batch": cfg.batch.tx_per_batch,
                                   "cu_limit": cfg.batch.cu_limit})
     n = len(spec["txs"])
-    max_price = max(t["cu_price_lamports"] for t in spec["txs"])
-    bmax = _guard.batch_max_lamports(n, cfg.base_fee_lamports, max_price)
+    bmax = _guard.batch_max_for_txs(
+        cfg.base_fee_lamports,
+        [(t["cu_price_lamports"], t["cu_limit"]) for t in spec["txs"]])
     payloads, sks = [], []
     for idx in spec["send_order"]:
         t = spec["txs"][idx]

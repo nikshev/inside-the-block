@@ -3,7 +3,14 @@
 verifies: FR-001-04
 """
 
-from itb.guard import decide
+from itb.guard import batch_max_for_txs, decide
+
+
+def test_batch_max_converts_micro_lamports():
+    # 10 tx, limit 200000, price 200000 мікро/CU:
+    # 5000 + ceil(200000*200000/1e6)=40000 лампортів за tx.
+    assert batch_max_for_txs(5000, [(200000, 200000)] * 10) == 450_000
+    assert batch_max_for_txs(5000, [(0, 200000)] * 10) == 50_000
 
 
 def test_accept_when_fits():
