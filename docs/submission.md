@@ -9,7 +9,7 @@
 - [x] README: дизайн, 6 пунктів validity, 3 невідокремлених
 - [x] `scripts/analyze.py`: метрики → таблиці для звіту
 - [x] Скелет звіту `docs/report.md` (вердикти, графіки, what-went-wrong)
-- [x] Live-дані mainnet: 410 tx, 41 батч (DRpb 18, Evn 11, CAo1 5, JUP 2, HEL 2, smoke 3), вердикти по 5 валідаторах, приклади блоків (слот 460850708: 10/10 наших у DRpb; verify --live-check проходить)
-- [ ] Фінальний `graphify update . && graphify export obsidian --dir ./vault`
-- [ ] Атрибуція форків за межами Jito (Frankendancer/Firedancer з великим стейком у розкладі не знайдено; версії зафіксовано)
-- [ ] Добір до порога PRD (≥15 батчів з ≥2 tx в слоті на валідатора): зараз DRpb 12, Evn 10, CAo1 7, JUP/HEL по 2, 5ZqveVff 2
+- [x] Live-дані mainnet: 1350 tx, 135 батчів, вердикти по 5 валідаторах (Evn statistical; DRpb/CAo1/JUP/HEL none), приклади блоків (слот 460850708: 10/10 наших у DRpb; verify --live-check проходить)
+- [x] Граф `graphify update . && graphify export obsidian --dir ./vault` (vault/ оновлено)
+- [x] Атрибуція клієнтів через validators.app: усі 5 — jito:true (Jito-Solana, версії 4.3.2/26.10.4); чистих Agave/Frankendancer/Firedancer з великим стейком у розкладі немає — зафіксовано як обмеження в docs/validators.md
+- [x] Поріг PRD (≥15 батчів з ≥2 tx в слоті на валідатора): CAo1 29, Evn 25, DRpb 23, JUP 19, HEL 17 — закрито всіма
