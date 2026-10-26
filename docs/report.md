@@ -1,91 +1,106 @@
-# Звіт: Inside the Block — порядок транзакцій у блоках Solana
+# Inside the Block — Mainnet Results
 
-> Скелет звіту. Розділи з позначкою ⏳ заповнюються після live-вимірювань.
-> Жодна цифра — без шляху до `data/` (принцип V конституції).
+## Executive Summary
 
-## 1. Дати вимірювань
+This study measures how Solana leaders order our own transactions after the Alpenglow upgrade. The committed mainnet dataset contains **1,490 unique landed transactions** from **149 ten-transaction send attempts**, across **508 slots**, using configuration version `2026.10.23.2`. Every landed position passes `scripts/verify.py` against the stored block response.
 
-| Захід | Дата (UTC) | Епоха | Конфіг | Примітка |
-|---|---|---|---|---|
-| dry-run | 2026-10-23 | — | `2026.10.23.2` | `run_pipeline.py`: 6 batchів × 10 tx, guard пораховано, леджер порожній |
-| devnet e2e | 2026-10-23/24 | слоти 514544243–244 | `2026.10.23.2` | DONE: batch A × 10 tx, усі signed/verified/sent/confirmed; позиції 243:[7,13,15,18] 244:[2,3,4,5,6,7]; `verify` ok; витрачено 0.00015 SOL (залишок 4.99985). Знайдено і виправлено: `encoding=base64` у sendTransaction, raise on RPC error, backoff на 429, maxSupportedTransactionVersion=1 |
-| live #1 (burst) | 2026-10-24 | 460820539–460820651 | `2026.10.23.2` | DONE: 2 batchі A × 10 tx, 20/20 confirmed; концентрація 2–3 слоти (залп працює); `verify` ok; analyze: 35 пар, agr 0.60, p=0.235 → **none** (опортуністична вибірка, без атрибуції валідатору — не вердикт). Витрачено всього 0.00059 SOL |
-| live #2+ (таргетовані) | ⏳ | ⏳ | ⏳ | --validator-identity + --wait-window; ціль ≥ 15 batchів з ≥ 2 tx в одному слоті НА валідатора |
-| live #2 (повтор) | ⏳ | ⏳ | ⏳ | якщо landing rate низький |
+The evidence supports FIFO arrival order as a strong baseline. Fee-based ordering is statistically detectable for EvnRmnMr, but it is not consistent across all sampled leaders. Arm B supports arrival ordering; arm C does not show that reward per cost unit outperforms CU price; arm D shows strong send-order agreement under shared-account conflicts.
 
-## 2. Версії
+The five targeted validators each exceeded the PRD threshold of at least 15 qualifying send attempts directed at that validator: DRpbCBMx 21, EvnRmnMr 26, CAo1dCGY 25, JUPiTERr 22, and HEL1USMZ 20. An attempt qualifies when at least two of its transactions landed in the same slot and the recorded slot leader matched the target validator. Attempts are identified from contiguous groups of ten sent records, so repeated memo `batch_id` labels do not merge reruns. validators.app marks all five as Jito-enabled. The PRD goal of sampling at least three distinct client implementations was not met and remains an explicit scope limitation.
 
-- `config_version`: ⏳ (усі прогони з різними версіями непорівнювані).
-- Validatorи (знімок `validators_snapshot.json` на кожен прогін): ⏳
-  ціль: 2× Agave, 2× Jito-Solana, 2× Frankendancer/Firedancer + бонус-форк.
+## Measurement Dates, Versions, and Run Metadata
 
-## 3. Verdictи по валідаторах
+| Item | Value |
+|---|---|
+| Network | Solana mainnet, post-Alpenglow |
+| Measurement period | 2026-10-24–26 |
+| Configuration version | `2026.10.23.2` |
+| Unique landed transactions | 1,490 |
+| Ten-transaction send attempts | 149 |
+| Slots represented | 508; range 460,818,816–461,608,309 |
+| Distinct memo `batch_id` labels | 136; 13 labels were reused across reruns, distinguished by contiguous groups of ten sent records |
+| Mainnet wallet balance at final check | 0.0830622 SOL from 0.1 SOL initial funding |
+| Configured spend cap | 50,000,000 lamports (0.05 SOL) |
 
-Initial mainnet data (1490 tx, verify ok; дедупліковано до унікальних сигнатур).
+For the 13 reused labels, transactions still have unique signatures and slots. Same-slot analysis uses those unique signatures and does not pair transactions across slots. Original send timestamps are present for 1,180 records; timestamps for 310 records reconstructed from on-chain memo tags were unavailable and are represented as zero.
 
-| Validator | Version | n tx | Pairs | Agr fee | Agr send | τ | 95% CI | p | Verdict |
-|---|---|---|---|---|---|---|---|---|---|
-| EvnRmnMr… | 26.10.4 | 253 | 236 | 0.729 | 0.792 | 0.458 | [0.61, 0.85] | 0.0050 | statistical |
-| DRpbCBMx… | 4.3.2 | 198 | 248 | 0.585 | 0.881 | 0.169 | [0.44, 0.74] | 0.0150 | none |
-| CAo1dCGY… | 4.3.2 | 256 | 293 | 0.529 | 0.966 | 0.058 | [0.41, 0.64] | 0.1800 | none |
-| JUPiTERr… | 26.10.4 | 208 | 187 | 0.561 | 0.979 | 0.123 | [0.47, 0.66] | 0.1000 | none |
-| HEL1USMZ… | 4.3.2 | 193 | 152 | 0.454 | 1.000 | -0.09 | [0.37, 0.53] | 0.8200 | none |
-| решта (~20 лідерів, spillover) | … | 362 | <22 кожен | — | — | — | — | — | insufficient-data |
+## Arm A — Fee-Gradient Results by Target Leader
 
-Arms B/C/D (supplement; C/D-рядки таблиці fee-oriented, тому `insufficient-data` за fee by design; details in text):
-- B (same reward, 100 tx, 127 пар, agr 0.95, CI [0.89, 1.00], p=0.005) — FIFO baseline confirmed на всіх 5 валідаторах.
-- C (same CU price, different limits, 200 tx, 271 пара, agr 0.57, CI [0.49, 0.64], p=0.10) — H3 не confirmed ніде.
-- D (shared writable, 140 tx, 208 пар, send agr 0.96, p=0.005) — з конфліктами планувальник preserves arrival order; fee gradient weakens (H4: conflicting tx behavior differs).
+Agreement is the share of non-tied same-slot pairs whose order matches the fee hypothesis (“higher CU price lands earlier”). Confidence intervals use batch resampling; permutation p-values compare observed agreement with randomized ordering within slots. “None” means no statistically supported fee-ordering rule was detected at the specified threshold; it does not prove that no rule can exist.
 
-Note: honest dynamics: DRpb was statistical на перших 65 парах (agr 0.86,
-p=0.005, включно з ідеальним batchем 45/45), but repeats diluted the effect
-to agr 0.69, p=0.02 → **none** за порогом p<0.01.
-Conclusion: fee sorting episodic (окремі щільні batchі), а не стабільне
-правило; data collection continues (PRD target: ≥15 batchів з ≥2 tx в слоті на валідатора).
+| Target leader | Version | Landed tx | Same-slot pairs | Fee agreement | Send-order agreement | Kendall τ | 95% CI | Permutation p | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| EvnRmnMr… | 26.10.4 | 137 | 236 | 0.729 | 0.792 | 0.458 | [0.611, 0.828] | 0.005 | Statistical |
+| DRpbCBMx… | 4.3.2 | 142 | 248 | 0.585 | 0.895 | 0.169 | [0.436, 0.742] | 0.015 | None |
+| CAo1dCGY… | 4.3.2 | 200 | 293 | 0.529 | 0.966 | 0.058 | [0.413, 0.642] | 0.180 | None |
+| JUPiTERr… | 26.10.4 | 98 | 187 | 0.561 | 0.979 | 0.123 | [0.470, 0.656] | 0.100 | None |
+| HEL1USMZ… | 4.3.2 | 94 | 152 | 0.454 | 1.000 | -0.092 | [0.366, 0.533] | 0.820 | None |
 
-- DRpbCBMx: batch v432-DRpb-A-1-7 — 10/10 tx в одному його слоті, ідеальний
-  порядок за fee (45/45) при випадковому порядку send order (send agr там же
-  0.51 ≈ noise) — отже, це scheduler decision, а не artifact. remaining slots
-  того ж валідатора: order = arrival order (per-slot send agr = 1.0
-  у кожному слоті з ≥2 tx; fee is random there). Hypothesis: планувальник
-  сортує за fee всередині banking-batchа, що arrived together; tx, що доходять
-  порізно, appended in arrival order. CAo1/HEL/JUP показують лише
-  другий режим. Proof of no confounder: send-порядок у ключовому
-  batchі was a shuffle [8,3,1,4,7,0,9,6,2,5], несумісним з fee-порядком.
-- Graph «position vs CU price» для кожного клієнта: `docs/plots/position-vs-fee.svg`
-  (410 точок, генерується `scripts/plot.py data-mainnet`); CSV-дані — output `scripts/analyze.py`.
-- Приклади блоків зі сигнатурами: слот 460850708 (DRpb, 10/10 наших) — verified via `verify --live-check`.
+Reproduce these results with:
 
-## 4. Що пішло не так
+```bash
+python3 scripts/analyze.py data-mainnet/ --min-pairs 10 --by-leader
+```
 
-- **Публічний RPC приймає, але не доводить**: 20/20 перших mainnet-tx випали
-  без сліду і без списань. Діагностика двома шляхами (приватний vs публічний
-  ендпоінт, однакові tx): публічний — finalized, приватний — невідомо.
-  Conclusion: шлях send order — окрема змінна (пишеться в дані як `path`);
-  вимірювання йдуть через публічний ендпоінт; staked sender — відкритий пункт.
-- **`sendTransaction` чекає base58**: наші base64-tx відхилялись з
-  `invalid base58 encoding`, а sender мовчки писав `tx_signature: None`.
-  Виправлено: `encoding: "base64"` + raise на RPC-помилку (тест ловить обидва).
-- **Прострочка blockhash**: підпис 10 tx чистим Python (~90 с) > життя bh.
-  Виправлено: паралельний підпис (12 ядер, ~6 с) + стратегія «підписати
-  за ~40 слотів до вікна → вогонь по processed-слоту».
-- **Phantom-рядки і дублікати**: проміжні версії ранера писали sent-рядки
-  для невідправлених batchів і дописували landed без дедупа (до 9×).
-  Виправлено: запис лише при відправці (`sent_written`), upsert+dedupe.
-  Історія відновлена з ланцюга за мемо-тегами; `verify` green.
-- **Метрика H1 була недійсна**: `send_idx` збігався з idx (корелює з fee),
-  напрямок порівняння був feeшний. Виправлено: `send_pos` + FIFO-напрямок
-  (тест `test_send_order_fifo_direction` ловить інверсію: 1−x).
-- **τ змішував слоти**: позиції з різних блоків непорівнювані. Виправлено:
-  `tau_pooled` — середнє по слотах, зважене на пари.
-- Кран devnet дав 429 по IP — обійдено одноразовим ключем і фандингом вручну.
-- Жодного відхилення guard (усі batchі в межах cap; леджер монотонний).
+The position-versus-fee chart is [`docs/plots/position-vs-fee.svg`](plots/position-vs-fee.svg), generated by `scripts/plot.py`.
 
-## 5. Conclusion (попередній, рукав A)
+## Experimental Arms and Hypotheses
 
-- DRpbCBMx (4.3.2): statistical слідування fee (agr 0.86, p=0.005).
-- EvnRmnMr (26.10.4): statistical слідування fee (agr 0.83, p=0.005).
-- HEL1USMZK, CAo1dCGY (4.3.2), JUPiTERr (26.10.4): правило не виявлено;
-  порядок близький до порядку надходження (FIFO baseline).
-- Hypothesis для перевірки рукавами B/C/D: scheduler sorts by fee лише
-  всередині пакету, що arrived together; між пакетами — порядок надходження.
+| Hypothesis / arm | Sample | Agreement | 95% CI | p-value | Result |
+|---|---:|---:|---:|---:|---|
+| H1 — FIFO arrival order (arm B) | 140 tx, 180 pairs | 0.967 | [0.908, 0.995] | 0.005 | Supported; strong arrival-order baseline |
+| H2 — CU-price ordering (arm A) | Per-leader results above | Varies by leader | Per-leader intervals above | Significant for EvnRmnMr | Conditional, not universal |
+| H3 — reward per cost unit (arm C) | 240 tx, 302 pairs | 0.540 | [0.474, 0.606] | 0.115 | Not supported; no evidence it outperforms CU price |
+| H4 — shared-account conflicts (arm D) | 180 tx, 269 pairs | Send-order agreement 0.952 | [0.919, 0.982] | 0.005 | Arrival order remains strong under the tested conflict setup |
+
+Arm D also shows strong send-order agreement with a shared payer and writable account; this does not establish a universal account-lock scheduling rule.
+
+## Interpretation
+
+The clearest fee-ordering example is leader DRpbCBMx in slot `460850708`: all ten of our transactions landed in one slot, and their order matched the fee gradient (45/45 pairs), despite randomized send order (send-order agreement in that slot: 0.51). This is evidence of a scheduler effect rather than a send-order artifact.
+
+Across the full sample, many slots follow arrival order instead. The evidence is consistent with two regimes: fee sorting among transactions received together, and arrival-order behavior for transactions arriving separately. Exact receipt time at the leader is not observable, so this remains an interpretation of block data rather than direct observation of the internal scheduler.
+
+The fee signal at DRpbCBMx weakened as the sample grew: an early subset was significant, while the larger accumulated sample did not meet the report’s p<0.01 criterion. EvnRmnMr remains statistically significant in arms A and D at the current sample sizes. CAo1dCGY’s earlier near-threshold result weakened as additional pairs were collected.
+
+## Design Validity and Non-Isolated Factors
+
+The experiment addresses the six PRD validity risks:
+
+1. **Leader identity and client snapshot:** use leader schedules, check actual slot leaders, and save validator snapshots; off-target transactions are excluded from target-leader conclusions.
+2. **Backend-to-node delivery path:** record the transport path (`rpc` or `direct-tpu`) as a variable. The mainnet measurements here used the public RPC path.
+3. **Interactions among our transactions:** use separate payers for independent arms; share a payer and writable account only in arm D.
+4. **Competition from other block transactions:** analyze relative order among our own transactions; other transactions provide block-position and gap context.
+5. **Send order:** randomize within batches using a recorded seed; arm B isolates FIFO behavior.
+6. **Noise versus signal:** use pairwise agreement, Kendall’s τ, batch-bootstrap intervals, and within-slot permutation tests.
+
+The experiment does not isolate:
+
+- Exact transaction arrival time at the leader versus scheduler policy; only our send timestamp is observable.
+- Parallel banking-thread execution; `getBlock` exposes entry order, not internal scheduler decisions.
+- Operator-specific configuration versus client defaults.
+- Three distinct client implementations. All five targeted validators are marked Jito-enabled by validators.app; version strings do not identify the exact client or fork binary.
+
+## What Went Wrong and Corrections
+
+- **Public RPC delivery was unreliable at first.** An initial 20-transaction probe was not observed on-chain through the configured private endpoint. A comparison probe finalized through the public RPC, so subsequent observations use the public endpoint and record the path.
+- **Transaction encoding:** `sendTransaction` initially interpreted base64 bytes as base58. The sender now specifies `encoding: "base64"` and raises on JSON-RPC errors.
+- **Blockhash expiry:** serial pure-Python signing took longer than the useful blockhash window. Signing was parallelized, and targeted runs prepare shortly before the leader window and fire against processed-slot progress.
+- **Phantom rows and duplicates:** intermediate runner versions wrote rows for unsent batches and appended duplicate landed records. Writes were moved to the send path, collection was deduplicated, and historical records were rebuilt from on-chain memo tags.
+- **H1 metric:** the initial send metric used transaction index instead of actual randomized send position and used the wrong direction. `send_pos` and the FIFO direction now have a regression test.
+- **Kendall τ:** positions from different slots are not directly comparable. `tau_pooled` computes τ within each slot and pools slot-level results.
+- **Guard units:** priority fees are specified in micro-lamports per CU. The guard now converts them to lamports before enforcing the cap. The configured cap remains 0.05 SOL.
+- **Devnet faucet:** requests were rate-limited (HTTP 429); a separate devnet key was funded manually.
+
+## Reproduction
+
+```bash
+python3 scripts/verify.py data-mainnet/
+python3 scripts/verify.py data-mainnet/ --live-check --rpc "$RPC_URL"
+python3 scripts/analyze.py data-mainnet/ --min-pairs 10 --by-leader
+python3 scripts/plot.py data-mainnet/ --out docs/plots/position-vs-fee.svg
+python3 scripts/trace.py --check
+PYTHONPATH=python python3 -m pytest -q
+```
+
+Raw signatures, slots, transaction parameters, block responses, leader records, configuration version, and spend-ledger records are committed under `data-mainnet/`; the validator snapshot is at `data/validators_snapshot.json`. The original project brief is preserved at [`docs/PRD-inside-the-block.md`](PRD-inside-the-block.md).

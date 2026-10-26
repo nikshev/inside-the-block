@@ -1,23 +1,32 @@
 # Local Development (FR-001-12)
 
-Without mainnet budget: block parsing on `solana-test-validator`,
-end-to-end on devnet with separate keys and zero mainnet limit.
+Use `solana-test-validator` for local block-parsing tests and devnet for a free end-to-end check. Keep devnet keys separate from mainnet keys; local and devnet activity must not spend the mainnet budget.
 
-## Local Validator
+## Start a Local Validator
 
-Profile `local` (see `docker-compose.yml`) starts
-`solana-test-validator --reset` on ports 8899/8900. No
-mainnet: compose has no mainnet endpoints, `pipeline` does not
-start in this profile.
+```bash
+docker compose --profile local up
+```
 
-## Devnet End-to-End (Free)
+The `local` profile in `docker-compose.yml` starts `solana-test-validator --reset` on ports 8899 and 8900. It does not start the mainnet pipeline or configure a mainnet RPC endpoint.
 
-Devnet keys only in `./keys` (volume, gitignore). Guard counts costs
-the same way; mainnet limit untouched since devnet keys
-don't overlap with mainnet.
+## Run the Offline Dry-Run
 
-## Fixtures
+```bash
+python3 scripts/run_pipeline.py
+```
 
-`tests/fixtures/block_100.json` — raw `getBlock` format understood by
-`storage.save_block` and `verify.load_block_sigs`. New block samples go
-next to it in the same format.
+The pipeline builds and signs the configured batches, reports the spend-guard estimate, and stops before sending.
+
+## Devnet End-to-End
+
+The devnet runner accepts an explicit RPC URL and keypair file. Use only a devnet-funded keypair:
+
+```bash
+python3 scripts/run_devnet.py --live \
+  --rpc https://api.devnet.solana.com \
+  --keypair keys/devnet-e2e.json \
+  --arm A --batches 1 --burst
+```
+
+The `keys/` directory is git-ignored. Do not reuse the mainnet keypair for devnet. The fixture `tests/fixtures/block_100.json` documents the stored `getBlock` shape used by `storage.save_block` and `verify.load_block_sigs`.

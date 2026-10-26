@@ -6,6 +6,7 @@
 """
 
 import csv
+from html import escape
 import json
 import math
 import sys
@@ -16,7 +17,7 @@ COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
 
 
 def load_points(data_dir: Path):
-    """(leader, cu_price, position) по кожній landed tx."""
+    """(leader, cu_price, position, slot, batch_id) по кожній landed tx."""
     sent = {}
     with (data_dir / "sent.csv").open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
@@ -36,7 +37,8 @@ def load_points(data_dir: Path):
             except ValueError:
                 price = 0
             pts.append((leaders.get(str(row["slot"]), "?")[:8],
-                        price, int(row["position"])))
+                        price, int(row["position"]), row["slot"],
+                        row["batch_id"]))
     return pts
 
 
@@ -63,10 +65,12 @@ def render_svg(points: list, title: str = "position vs CU price") -> str:
            f'<text x="14" y="{H // 2}" text-anchor="middle" font-size="12" '
            f'transform="rotate(-90 14,{H // 2})">position in block</text>']
     for p in points:
+        tooltip = (f"{p[0]} fee={p[1]} pos={p[2]} slot={p[3]} "
+                   f"batch_id={p[4]}")
         out.append(
             f'<circle cx="{sx(math.log10(p[1] + 1)):.1f}" cy="{sy(p[2]):.1f}" '
             f'r="4" fill="{color[p[0]]}" fill-opacity="0.7">'
-            f"<title>{p[0]} fee={p[1]} pos={p[2]}</title></circle>")
+            f"<title>{escape(tooltip)}</title></circle>")
     lx = M
     for i, name in enumerate(leaders):
         out.append(
