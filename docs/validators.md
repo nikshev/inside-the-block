@@ -1,9 +1,9 @@
-# Вибір валідаторів (епоха 1066, 2026-10-24; атрибуція validators.app, 2026-10-24)
+# Validator Selection (epoch 1066, 2026-10-24; attribution via validators.app, 2026-10-24)
 
-Критерій: кількість leader-слотів у `getLeaderSchedule` ∝ стейк → часті вікна.
-Версії — як є в `getClusterNodes`. Клієнт — за прапором `jito` validators.app
-(jito:true = Jito-Solana/Jito-enabled; jito:false = немодифікований Agave).
-Повний знімок: `data/validators_snapshot.json` (3909 нод).
+Criterion: leader slots in `getLeaderSchedule` ∝ stake → window share.
+Versions as in `getClusterNodes`. Client per `jito` flag in validators.app
+(jito:true = Jito-Solana/Jito-enabled; jito:false = unmodified Agave).
+Full snapshot: `data/validators_snapshot.json` (3909 нод).
 
 | # | Валідатор | Слотів | Version | jito | Оператор |
 |---|---|---|---|---|---|
@@ -15,8 +15,8 @@
 | V6 | GGX3BEoZDqjxcw4AbCdu62ZTMrkpSgmPt81oP2mVuZNS | 132 | 4.3.0 | true | HashKey Cloud |
 | V7 | mds4GEuiSgQRqveGyktWpETBFCb4AS2wDnhqwLHcT6Z | 340 | 4.4.0-beta.1 | false | (без імені; єдиний non-jito кандидат) |
 
-Ключовий факт: **однакові version string містять протилежні поведінки**
-(DRpb слідує fee, CAo1/HEL — ні; обидва jito:true). Отже, різниця — не версія
-клієнта, а конфігурація оператора або таймінг надходження. Версія ≠ клієнт:
-точні білди форків (Frankendancer/Firedancer) за version string не
-розрізняються; це обмеження записано чесно, а не замовчано.
+Key fact: **identical version strings exhibit opposite behaviors**
+(DRpb follows fee, CAo1/HEL do not; both jito:true). Отже, різниця — не версія
+клієнта, а конфігурація оператора або таймінг надходження. Version ≠ client:
+exact fork builds (Frankendancer/Firedancer) are not distinguishable by version string;
+this limitation is documented honestly, not by default.
