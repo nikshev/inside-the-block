@@ -2,6 +2,10 @@
 
 An empirical Solana mainnet study of how validators order transactions within blocks, prepared for the Superteam Ukraine “Inside the Block” bounty. The evidence is based on the positions of our own signed transactions in real blocks.
 
+## AI Assistance
+
+AI tools assisted with software implementation, test development, analysis tooling, and drafting and English translation of project documentation. The reported mainnet findings are computed from the committed raw transaction and block records using the repository scripts; landed positions can be checked with the included verifier.
+
 ## Research Questions
 
 For each targeted leader:
