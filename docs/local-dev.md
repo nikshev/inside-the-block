@@ -1,32 +1,23 @@
-# Локальна розробка (FR-001-12)
+# Local Development (FR-001-12)
 
-Без mainnet-бюджету: парсинг блоків — на `solana-test-validator`,
-end-to-end — на devnet з окремими ключами і нульовим mainnet-лімітом.
+Without mainnet budget: block parsing on `solana-test-validator`,
+end-to-end on devnet with separate keys and zero mainnet limit.
 
-## Локальний валідатор
+## Local Validator
 
-```bash
-docker compose --profile local up
-```
+Profile `local` (see `docker-compose.yml`) starts
+`solana-test-validator --reset` on ports 8899/8900. No
+mainnet: compose has no mainnet endpoints, `pipeline` does not
+start in this profile.
 
-Профіль `local` (див. `docker-compose.yml`) піднімає
-`solana-test-validator --reset` на портах 8899/8900. Жодного звернення до
-mainnet: у compose немає mainnet-ендпоінтів, `pipeline` у цьому профілі не
-стартує.
+## Devnet End-to-End (Free)
 
-## Devnet end-to-end (безкоштовно)
+Devnet keys only in `./keys` (volume, gitignore). Guard counts costs
+the same way; mainnet limit untouched since devnet keys
+don't overlap with mainnet.
 
-```bash
-cp .env.example .env          # RPC_URL=wss/json devnet-ендпоінт
-MODE=dry-run docker compose up
-```
+## Fixtures
 
-Ключі devnet — лише в `./keys` (volume, gitignore). Guard рахує витрати так
-само; mainnet-ліміт у цьому прогоні не чіпається, бо sender devnet-ключі
-не перетинаються з mainnet.
-
-## Фікстури
-
-`tests/fixtures/block_100.json` — форма сирого `getBlock`, яку розуміють
-`storage.save_block` і `verify.load_block_sigs`. Нові семпли блоків класти
-поруч у тій самій формі.
+`tests/fixtures/block_100.json` — raw `getBlock` format understood by
+`storage.save_block` and `verify.load_block_sigs`. New block samples go
+next to it in the same format.
