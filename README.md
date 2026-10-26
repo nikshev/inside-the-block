@@ -1,16 +1,16 @@
-# Inside the Block — порядок транзакцій у блоках Solana
+# Inside the Block — Transaction Ordering in Solana Blocks
 
-Експеримент на mainnet: за яким правилом валідатори різних клієнтів
-впорядковують транзакції в блоці (Superteam Ukraine bounty, ~2 500 USDC).
+Mainnet experiment: what rule do validators of different clients
+use to order transactions in blocks (Superteam Ukraine bounty, ~2,500 USDC).
 Докази — позиції **наших власних** транзакцій у реальних блоках.
 
-## Ключове питання (на кожен валідатор)
+## Key Question (per validator)
 
-1. Яке правило ставить tx раніше/пізніше (fee, reward/CU, час, блокування)?
-2. Наскільки строго (частка пар + довірчий інтервал)?
-3. Чи є правило взагалі (або це шум — з обґрунтуванням)?
+1. What rule puts tx earlier/later (fee, reward/CU, time, conflicts)?
+2. How strict (pair fraction + confidence interval)?
+3. Is there a rule at all (or is it noise — with justification)?
 
-## Запуск однією командою
+## Single-Command Launch
 
 ```bash
 cp .env.example .env        # RPC_URL=..., WS_URL=...
@@ -19,87 +19,87 @@ docker compose up           # dry-run за замовчуванням: tx буд
 MODE=live docker compose up # реальна відправка (після успішного dry-run)
 ```
 
-Dry-run зупиняється на spend guard і показує розрахунок витрат.
-Жодного lamport без `MODE=live` — це властивість конструкції, а не домовленість.
+Dry-run stops at spend guard and shows cost estimate.
+No lamport without `MODE=live` — this is a design property, not a convention.
 
-## Бюджет і ключі
+## Budget & Keys
 
-- Ліміт — `spend_cap_lamports` у `config/experiment.yaml` (~0.05 SOL).
-  Guard рахує максимальну комісію батча **до** відправки, веде
-  `data/spend_ledger.jsonl`, досяг ліміту → зупинка.
-- Keypair-и лише через `./keys` (volume, gitignore). RPC URL лише через env.
+- Limit — `spend_cap_lamports` in `config/experiment.yaml` (~0.05 SOL).
+  Guard calculates max batch fee **before** send, maintains
+  `data/spend_ledger.jsonl`, limit reached → stop.
+- Keypairs only via `./keys` (volume, gitignore). RPC URL only via env.
   `.env.example` без секретів; CI ловить секрети (`private key`, мнемоніки,
-  base58-довжини) і червоний `trace.py`.
+  base58 lengths) and red `trace.py`.
 
-## Архітектура
+## Architecture
 
 ```
-config/experiment.yaml   версіонований конфіг (cap, рукави, пороги аналізу)
+config/experiment.yaml   versioned config (cap, arms, analysis thresholds)
 python/itb/              config→guard→ledger→log→storage→pipeline (001)
   base58/ed25519/txbuilder/arms/schedule/sender/collector/measure (002)
   analysis/report (003)
-scripts/verify.py        landed.csv vs blocks/ (+ --live-check з RPC)
-scripts/analyze.py       data/ → метрики → Markdown/CSV
+scripts/verify.py        landed.csv vs blocks/ (+ --live-check via RPC)
+scripts/analyze.py       data/ → metrics → Markdown/CSV
 data/                    sent.csv, landed.csv, blocks/, validators_snapshot.json
-tests/                   без мережі (фікстури + локальні HTTP-стаби)
+tests/                   no network (fixtures + local HTTP stubs)
 ```
 
-Мова: Python 3.12, тільки stdlib (ed25519 і base58 — вендорені/власні,
-звірені з незалежними реалізаціями: cryptography, solders).
+Language: Python 3.12, stdlib only (ed25519 & base58 vendored/own,
+verified against independent implementations: cryptography, solders).
 
-## Дизайн експерименту
+## Experiment Design
 
-Одиниця — **батч**: 8–12 наших tx в одне leader-вікно одного валідатора.
-Одна керована змінна, решта рандомізована. До аналізу — лише пари наших tx
-в **одному слоті**.
+Unit is **batch**: 8–12 our txs in one leader window of one validator.
+One controlled variable, rest randomized. For analysis — only pairs of our txs
+in **one slot**.
 
-| Рукав | Змінюємо | Фіксуємо | Гіпотеза |
+| Arm | Varies | Fixed | Hypothesis |
 |---|---|---|---|
-| A | CU price (10 рівнів) | CU limit, незалежні платники | H2 проти H0/H1 |
-| B | порядок/інтервал відправки | однакова винагорода | H1 (FIFO) |
-| C | CU limit при однаковому price | незалежні платники | H3 проти H2 |
-| D | як A + спільний writable-акаунт | — | H4 (блокування) |
+| A | CU price (10 levels) | CU limit, independent payers | H2 vs H0/H1 |
+| B | send order/interval | same reward | H1 (FIFO) |
+| C | CU limit at same price | independent payers | H3 vs H2 |
+| D | like A + shared writable account | — | H4 (conflicts) |
 
-Доставка: розклад `getLeaderSchedule`, відправка за ~1 слот до вікна,
-`maxRetries=0`, шлях (`direct-tpu`/`rpc`) пишеться як змінна, час — у
-мікросекундах. Валідатори: ≥ 6, ≥ 3 клієнти (Agave, Jito-Solana, Frankendancer+).
+Delivery: `getLeaderSchedule` schedule, send ~1 slot before window,
+`maxRetries=0`, path (`direct-tpu`/`rpc`) logged as variable, time in
+microseconds. Validators: ≥ 6, ≥ 3 clients (Agave, Jito-Solana, Frankendancer+).
 
-## Design Validity — як закрито 6 пунктів
+## Design Validity — How 6 Points Are Covered
 
-| Пункт PRD | Ризик | Як закриваємо |
+| PRD Point | Risk | How Covered |
 |---|---|---|
-| Leader schedule і типи лідерів | чужий лідер, зміна клієнта | `schedule.windows` + `getSlotLeaders`-звірка; `off-target` батчі виключаються з аналізу; snapshot версій на прогін |
-| Шлях від бекенду до ноди | форвардинг/SWQoS перемішують порядок | шлях — змінна (`direct-tpu`/`rpc`); одне з'єднання; див. невідокремлене №1 |
-| Взаємодія наших tx | спільний fee payer = конфлікт | пул платників для незалежних; спільний writable лише в D |
-| Конкуренція в блоці | чужі tx витісняють наші | аналізуємо відносний порядок наших; чужі — контекст (заповненість, медіана fee, розриви) |
-| Порядок відправки | плутає FIFO і priority | seed-перестановка в кожному батчі, seed у лозі; окремий рукав B |
-| Шум проти правила | малі вибірки брешуть | пермутаційний тест + Kendall τ з bootstrap CI; поріг `min_pairs` у YAML |
+| Leader schedule & leader types | wrong leader, client change | `schedule.windows` + `getSlotLeaders` cross-check; `off-target` batches excluded; version snapshot per run |
+| Backend-to-node path | forwarding/SWQoS reorder | path is a variable (`direct-tpu`/`rpc`); single connection; see undiff. #1 |
+| Our tx interaction | shared fee payer = conflict | payer pool for independent; shared writable only in D |
+| Block competition | foreign tx displace ours | we analyze relative order of ours; foreign = context (fill, median fee, gaps) | |
+| Send order | confuses FIFO & priority | per-batch seed shuffle, seed in logs; separate arm B | |
+| Noise vs rule | small samples mislead | permutation test + Kendall τ + bootstrap CI; `min_pairs` threshold in YAML | |
 
-## Що ми НЕ відокремлюємо (чесно)
+## What We Do NOT Isolate (Honestly)
 
-1. **час надходження tx до лідера** проти правила планувальника — бачимо лише час відправки;
-2. **паралельне виконання** в кількох потоках — порядок у `getBlock` це порядок entries, не рішення планувальника;
-3. **налаштування оператора** проти дефолтів його клієнта.
+1. **tx arrival time at leader** vs scheduler rule — we only see send time;
+2. **parallel execution** in multiple threads — `getBlock` order is entries order, not scheduler decision;
+3. **operator config** vs client defaults.
 
-## Перевірка суддею
+## Judge Verification
 
 ```bash
-python3 scripts/verify.py data/                        # локально
-python3 scripts/verify.py data/ --live-check --rpc URL # проти ланцюга
-python3 scripts/analyze.py data/ --min-pairs 30        # метрики → таблиця
+python3 scripts/verify.py data/                        # locally
+python3 scripts/verify.py data/ --live-check --rpc URL # vs chain
+python3 scripts/analyze.py data/ --min-pairs 30        # metrics → table
 python3 scripts/trace.py && PYTHONPATH=python python3 -m pytest -q
 ```
 
-## Витрати (орієнтир PRD)
+## Costs (PRD Estimate)
 
-~20 батчів × 10 tx × 8 валідаторів ≈ 1 600 tx; база 5 000 lamports ≈ 0.008 SOL,
-решта — priority fees і повтори. Точні числа — після dry-run.
+~20 batches × 10 tx × 8 validators ≈ 1,600 tx; base 5,000 lamports ≈ 0.008 SOL,
+rest — priority fees & retries. Exact numbers after dry-run.
 
-## Статус
+## Status
 
-- [x] 001 каркас: конфіг, guard, леджер, dry-run, verify, CI
-- [x] 002 вимірювання: реальні підписані tx, рукави, sender, збір
-- [x] 003 аналіз: agreement, τ+CI, пермутації, вердикти
-- [x] 004 сабміт: цей README, `analyze`, live-check, скелет звіту
-- [ ] Live-прогони на mainnet (дати — у `docs/report.md` після виходу на live)
-- [ ] Фінальний звіт з вердиктами по валідаторах
+- [x] 001 scaffold: config, guard, ledger, dry-run, verify, CI
+- [x] 002 measurement: real signed txs, arms, sender, collection
+- [x] 003 analysis: agreement, τ+CI, permutations, verdicts
+- [x] 004 submission: this README, `analyze`, live-check, report skeleton
+- [ ] Live runs on mainnet (dates in `docs/report.md` after going live)
+- [ ] Final report with per-validator verdicts
